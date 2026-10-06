@@ -27,8 +27,42 @@
   --scene-row: #4d6a2a;
   --scene-overlay: linear-gradient(100deg, rgb(24 56 30 / 0.92) 0%, rgb(24 56 30 / 0.7) 45%, rgb(24 56 30 / 0.05) 100%);
 
+  --on-scene: #ffffff;
+
   --radius: 14px;
   --radius-small: 10px;
   --tap: 48px;
   color-scheme: light;
+}
+
+/*
+ * Dark: deep green-charcoal night field, soft green accent, visible borders.
+ * Accent colours are light, so text on them switches to dark for contrast.
+ */
+:root[data-theme='dark'] {
+  --bg: #0f1712;
+  --surface: #18231b;
+  --surface-sunk: #121c15;
+  --text: #e9f0e6;
+  --muted: #a8b8aa;
+  --border: #3a5040;
+  --primary: #86c98a;
+  --primary-strong: #173520;
+  --primary-text: #0d1f10;
+  --warning: #eeaa45;
+  --recover: #d7a0d7;
+  --danger: #ff8f84;
+  --danger-text: #2b0906;
+  --error-bg: #3b1915;
+  --focus: #b7eab9;
+
+  --scene-sky: #1c2a3c;
+  --scene-sun: #e9e1c0;
+  --scene-hill: #24402a;
+  --scene-tree: #142a19;
+  --scene-field: #2a4320;
+  --scene-row: #1a2d14;
+  --scene-overlay: linear-gradient(100deg, rgb(8 18 11 / 0.92) 0%, rgb(8 18 11 / 0.7) 45%, rgb(8 18 11 / 0.1) 100%);
+
+  color-scheme: dark;
 }

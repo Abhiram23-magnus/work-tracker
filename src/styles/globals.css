@@ -51,7 +51,7 @@ a {
   min-height: 84px;
   display: flex;
   align-items: center;
-  color: var(--primary-text);
+  color: var(--on-scene);
   background: var(--primary-strong);
 }
 
@@ -826,4 +826,38 @@ fieldset.field legend {
 .record-worker {
   font-weight: 700;
   font-size: 1.05rem;
+}
+
+/* Theme toggle */
+.theme-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.theme-toggle button {
+  min-height: 40px;
+  min-width: 56px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-scene);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.theme-toggle button[aria-pressed='true'] {
+  background: var(--on-scene);
+  color: #1c2a1e;
+}
+
+.dialog-backdrop {
+  background: rgb(0 0 0 / 0.6);
 }

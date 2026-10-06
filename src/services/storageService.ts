@@ -7,6 +7,7 @@
 export interface StorageBackend {
   getItem(key: string): string | null
   setItem(key: string, value: string): void
+  removeItem(key: string): void
 }
 
 export type CollectionName = 'workers' | 'workRecords' | 'transactions'
@@ -17,6 +18,9 @@ export interface StorageService {
   write<T>(collection: CollectionName, items: T[]): Promise<void>
   /** Collections that had to be repaired on read; the original text is kept under `<key>.corrupt`. */
   recoveredCollections(): CollectionName[]
+  /** Small preferences such as the theme. Missing or unreadable values come back as null. */
+  readSetting(name: string): Promise<string | null>
+  writeSetting(name: string, value: string | null): Promise<void>
 }
 
 export class StorageWriteError extends Error {
@@ -32,6 +36,7 @@ export function createMemoryBackend(initial: Record<string, string> = {}): Stora
   return {
     getItem: (key) => data.get(key) ?? null,
     setItem: (key, value) => void data.set(key, value),
+    removeItem: (key) => void data.delete(key),
   }
 }
 
@@ -95,6 +100,23 @@ export function createStorageService(backend: StorageBackend = defaultBackend())
     },
 
     recoveredCollections: () => [...recovered],
+
+    async readSetting(name: string) {
+      try {
+        return backend.getItem(`${KEY_PREFIX}setting:${name}`)
+      } catch {
+        return null
+      }
+    },
+
+    async writeSetting(name: string, value: string | null) {
+      try {
+        if (value === null) backend.removeItem(`${KEY_PREFIX}setting:${name}`)
+        else backend.setItem(`${KEY_PREFIX}setting:${name}`, value)
+      } catch (error) {
+        throw new StorageWriteError(error)
+      }
+    },
   }
 }
 

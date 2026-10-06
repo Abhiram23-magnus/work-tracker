@@ -39,11 +39,30 @@ describe('persistence', () => {
   it('turns a failed save into a readable error instead of throwing', async () => {
     const full: StorageBackend = {
       getItem: () => null,
+      removeItem: () => {},
       setItem: () => {
         throw new Error('QuotaExceededError')
       },
     }
     const result = await makeServices(full).workers.create({ name: 'A', workType: 'X', dailyWage: 100 })
     expect(result).toMatchObject({ ok: false, error: { code: 'storage', message: expect.stringContaining('Could not save') } })
+  })
+})
+
+describe('theme setting', () => {
+  it('remembers the chosen theme, ignores junk and can be cleared', async () => {
+    const { createSettingsService } = await import('../services/settingsService')
+    const backend = createMemoryBackend()
+    const settings = createSettingsService(createStorageService(backend))
+    expect(await settings.getTheme()).toBeUndefined()
+
+    await settings.setTheme('dark')
+    expect(await createSettingsService(createStorageService(backend)).getTheme()).toBe('dark')
+
+    backend.setItem('worker-tracker:v1:setting:theme', 'purple')
+    expect(await settings.getTheme()).toBeUndefined()
+
+    await settings.setTheme(undefined)
+    expect(backend.getItem('worker-tracker:v1:setting:theme')).toBeNull()
   })
 })

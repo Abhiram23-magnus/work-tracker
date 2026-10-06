@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { hrefFor, type Route } from '../../app/routes'
 import { FieldScene } from './FieldScene'
+import { ThemeToggle } from '../theme/ThemeToggle'
 
 // Simple line icons help farmers who read slowly find the right tab.
 const ICONS = {
@@ -27,6 +28,7 @@ export function AppLayout({ route, children }: { route: Route; children: ReactNo
           <span className="app-title">Worker Tracker</span>
           <span className="app-tagline">Farm worker notebook</span>
         </div>
+        <ThemeToggle />
       </header>
       <main className="app-main">{children}</main>
       <nav className="bottom-nav" aria-label="Main">
