@@ -1,9 +1,16 @@
 // Offline support: pages load from the network when possible and fall back to the cached app shell.
 // Built files have hashed names, so serving them from cache first is safe.
-const CACHE = 'worker-tracker-v1'
+const CACHE = 'worker-tracker-v2'
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html'])))
+  // Cache the page plus the script, styles and icons it links, so the app opens offline from the very first install.
+  event.waitUntil(
+    caches.open(CACHE).then(async (cache) => {
+      const html = await (await fetch('./index.html', { cache: 'no-cache' })).text()
+      const linked = [...html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)].map((m) => m[1])
+      await cache.addAll(['./', './index.html', ...linked])
+    }),
+  )
   self.skipWaiting()
 })
 
