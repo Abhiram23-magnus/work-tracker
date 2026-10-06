@@ -11,14 +11,10 @@ export function paiseToRupees(paise: Paise): number {
   return paise / 100
 }
 
-const inr = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-})
+const wholeRupees = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
+const withPaise = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 })
 
-/** Formats paise as rupees, keeping the sign: -50000 → "-₹500". */
+/** Formats paise as rupees, keeping the sign: -50000 → "-₹500", 20050 → "₹200.50". */
 export function formatPaise(paise: Paise): string {
-  return inr.format(paise / 100)
+  return (paise % 100 === 0 ? wholeRupees : withPaise).format(paise / 100)
 }

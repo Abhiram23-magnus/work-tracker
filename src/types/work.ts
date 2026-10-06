@@ -25,3 +25,9 @@ export interface WorkRecordInput {
   status: WorkStatus
   description?: string
 }
+
+export const WORK_STATUS_LABELS: Record<WorkStatus, string> = {
+  present: 'Present',
+  'half-day': 'Half Day',
+  absent: 'Absent',
+}

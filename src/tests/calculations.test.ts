@@ -3,7 +3,7 @@ import { dashboardTotals, earnedAmountFor, summarizeWorker } from '../domain/cal
 import { accountStatusFor } from '../domain/accountStatus'
 import { isValidPhone, validateTransaction, validateWorker } from '../domain/validation'
 import { formatPaise, rupeesToPaise } from '../utils/currency'
-import { isValidISODate } from '../utils/dates'
+import { formatDisplayDate, isValidISODate } from '../utils/dates'
 import type { WorkRecord } from '../types/work'
 import type { Transaction } from '../types/transaction'
 import type { Worker } from '../types/worker'
@@ -132,6 +132,10 @@ describe('validation', () => {
     expect(isValidISODate('2026-02-29')).toBe(false)
     expect(isValidISODate('06/10/2026')).toBe(false)
   })
+
+  it('formats dates for display without shifting the day', () => {
+    expect(formatDisplayDate('2026-10-06')).toMatch(/^Tue, 6 Oct,? 2026$/)
+  })
 })
 
 describe('currency', () => {
@@ -146,5 +150,6 @@ describe('currency', () => {
   it('formats negative balances with the sign', () => {
     expect(formatPaise(-50000)).toBe('-₹500')
     expect(formatPaise(300000)).toBe('₹3,000')
+    expect(formatPaise(20050)).toBe('₹200.50')
   })
 })

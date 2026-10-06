@@ -23,6 +23,16 @@ export function WorkerForm({ initial, submitLabel, onSubmit, onCancel, onSaved }
   const [formError, setFormError] = useState<string>()
   const [saving, setSaving] = useState(false)
 
+  // Drop a field's error as soon as the farmer changes that field.
+  const edit = (field: string, set: (v: string) => void) => (value: string) => {
+    set(value)
+    setErrors((prev) => {
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -36,11 +46,11 @@ export function WorkerForm({ initial, submitLabel, onSubmit, onCancel, onSaved }
   return (
     <form className="card form" onSubmit={handleSubmit} noValidate>
       {formError && <Notice>{formError}</Notice>}
-      <TextField label="Name" value={name} onChange={setName} error={errors.name} autoComplete="off" autoFocus />
+      <TextField label="Name" value={name} onChange={edit('name', setName)} error={errors.name} autoComplete="off" autoFocus />
       <TextField
         label="Work type"
         value={workType}
-        onChange={setWorkType}
+        onChange={edit('workType', setWorkType)}
         error={errors.workType}
         hint="For example: Harvesting, Weeding, Tractor"
         autoComplete="off"
@@ -49,7 +59,7 @@ export function WorkerForm({ initial, submitLabel, onSubmit, onCancel, onSaved }
         label="Daily wage"
         prefix="₹"
         value={wage}
-        onChange={setWage}
+        onChange={edit('dailyWage', setWage)}
         error={errors.dailyWage}
         inputMode="decimal"
         autoComplete="off"
@@ -57,7 +67,7 @@ export function WorkerForm({ initial, submitLabel, onSubmit, onCancel, onSaved }
       <TextField
         label="Phone (optional)"
         value={phone}
-        onChange={setPhone}
+        onChange={edit('phone', setPhone)}
         error={errors.phone}
         type="tel"
         inputMode="tel"

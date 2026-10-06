@@ -2,14 +2,19 @@ import { useState } from 'react'
 import { workerService } from '../services'
 import { hrefFor, navigate } from '../app/routes'
 import { formatPaise } from '../utils/currency'
-import { useWorker } from '../components/worker/useWorkers'
+import { useWorker } from '../hooks/useWorkers'
+import { useWorkRecords } from '../hooks/useWorkRecords'
+import { WorkEntryForm } from '../components/work/WorkEntryForm'
+import { WorkHistory } from '../components/work/WorkHistory'
 import { WorkerForm } from '../components/worker/WorkerForm'
 import { DeleteWorker } from '../components/worker/DeleteWorker'
 import { Notice } from '../components/ui/Notice'
 
 export function WorkerProfilePage({ id }: { id: string }) {
   const { worker, loading, reload } = useWorker(id)
+  const { records, reload: reloadWork } = useWorkRecords(id)
   const [editing, setEditing] = useState(false)
+  const [recording, setRecording] = useState(false)
   const [error, setError] = useState<string>()
 
   if (loading) return null
@@ -64,12 +69,32 @@ export function WorkerProfilePage({ id }: { id: string }) {
           <p className="muted small">Changing the daily wage only affects new work entries.</p>
           <div className="form-actions">
             <DeleteWorker worker={worker} onDeleted={() => navigate({ name: 'workers' })} onError={setError} />
-            <button type="button" className="btn btn-primary" onClick={() => setEditing(true)}>
+            <button type="button" className="btn btn-secondary" onClick={() => setEditing(true)}>
               Edit worker
             </button>
           </div>
         </>
       )}
+
+      <div className="section-head">
+        <h2>Work history</h2>
+      </div>
+      {recording ? (
+        <WorkEntryForm
+          workers={[worker]}
+          worker={worker}
+          onCancel={() => setRecording(false)}
+          onSaved={() => {
+            setRecording(false)
+            reloadWork()
+          }}
+        />
+      ) : (
+        <button type="button" className="btn btn-primary btn-block btn-large" onClick={() => setRecording(true)}>
+          Record work
+        </button>
+      )}
+      <WorkHistory worker={worker} records={records} onChanged={reloadWork} />
     </section>
   )
 }

@@ -21,3 +21,16 @@ export function todayISO(now: Date = new Date()): string {
 export function nowTimestamp(): string {
   return new Date().toISOString()
 }
+
+const displayFormat = new Intl.DateTimeFormat('en-IN', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
+/** "2026-10-06" → "Tue, 6 Oct 2026". Formatted in UTC so the day never shifts with the phone's time zone. */
+export function formatDisplayDate(iso: string): string {
+  return isValidISODate(iso) ? displayFormat.format(new Date(`${iso}T00:00:00Z`)) : iso
+}
