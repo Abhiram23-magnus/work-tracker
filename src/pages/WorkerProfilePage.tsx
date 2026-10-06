@@ -6,6 +6,10 @@ import { useWorker } from '../hooks/useWorkers'
 import { useWorkRecords } from '../hooks/useWorkRecords'
 import { WorkEntryForm } from '../components/work/WorkEntryForm'
 import { WorkHistory } from '../components/work/WorkHistory'
+import { useTransactions } from '../hooks/useTransactions'
+import { MoneyForm } from '../components/money/MoneyForm'
+import { MoneyHistory } from '../components/money/MoneyHistory'
+import type { TransactionType } from '../types/transaction'
 import { WorkerForm } from '../components/worker/WorkerForm'
 import { DeleteWorker } from '../components/worker/DeleteWorker'
 import { Notice } from '../components/ui/Notice'
@@ -15,6 +19,8 @@ export function WorkerProfilePage({ id }: { id: string }) {
   const { records, reload: reloadWork } = useWorkRecords(id)
   const [editing, setEditing] = useState(false)
   const [recording, setRecording] = useState(false)
+  const { transactions, reload: reloadMoney } = useTransactions(id)
+  const [paying, setPaying] = useState<TransactionType>()
   const [error, setError] = useState<string>()
 
   if (loading) return null
@@ -95,6 +101,32 @@ export function WorkerProfilePage({ id }: { id: string }) {
         </button>
       )}
       <WorkHistory worker={worker} records={records} onChanged={reloadWork} />
+
+      <div className="section-head">
+        <h2>Money history</h2>
+      </div>
+      {paying ? (
+        <MoneyForm
+          type={paying}
+          workers={[worker]}
+          worker={worker}
+          onCancel={() => setPaying(undefined)}
+          onSaved={() => {
+            setPaying(undefined)
+            reloadMoney()
+          }}
+        />
+      ) : (
+        <div className="form-actions money-actions">
+          <button type="button" className="btn btn-advance btn-large" onClick={() => setPaying('advance')}>
+            Give Advance
+          </button>
+          <button type="button" className="btn btn-primary btn-large" onClick={() => setPaying('wage-payment')}>
+            Pay Wages
+          </button>
+        </div>
+      )}
+      <MoneyHistory worker={worker} transactions={transactions} onChanged={reloadMoney} />
     </section>
   )
 }

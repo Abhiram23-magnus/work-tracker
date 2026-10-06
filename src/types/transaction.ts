@@ -24,3 +24,14 @@ export interface TransactionInput {
   type: TransactionType
   note?: string
 }
+
+export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
+  advance: 'Advance',
+  'wage-payment': 'Wage payment',
+}
+
+/** Button and form titles, so farmers never pick a technical "type". */
+export const TRANSACTION_ACTION_LABELS: Record<TransactionType, string> = {
+  advance: 'Give Advance',
+  'wage-payment': 'Pay Wages',
+}

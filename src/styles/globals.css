@@ -544,3 +544,37 @@ fieldset.field legend {
   margin: 0;
   text-align: center;
 }
+
+/* Money */
+.form-title {
+  margin: 0;
+}
+
+.form-hint {
+  margin: 4px 0 0;
+}
+
+.money-form-advance {
+  border-top: 4px solid var(--warning);
+}
+
+.money-form-wage-payment {
+  border-top: 4px solid var(--primary);
+}
+
+.btn-advance {
+  background: var(--warning);
+  color: var(--primary-text);
+}
+
+.money-actions .btn-large {
+  margin-bottom: 12px;
+}
+
+.badge-advance {
+  background: var(--warning);
+}
+
+.badge-wage-payment {
+  background: var(--primary);
+}
