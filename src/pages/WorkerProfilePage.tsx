@@ -5,10 +5,10 @@ import { formatPaise } from '../utils/currency'
 import { useWorker } from '../hooks/useWorkers'
 import { useWorkRecords } from '../hooks/useWorkRecords'
 import { WorkEntryForm } from '../components/work/WorkEntryForm'
-import { WorkHistory } from '../components/work/WorkHistory'
 import { useTransactions } from '../hooks/useTransactions'
 import { MoneyForm } from '../components/money/MoneyForm'
-import { MoneyHistory } from '../components/money/MoneyHistory'
+import { EntryList } from '../components/history/EntryList'
+import { buildHistory } from '../domain/history'
 import type { TransactionType } from '../types/transaction'
 import { summarizeWorker } from '../domain/calculations'
 import { WorkerSummary } from '../components/money/WorkerSummary'
@@ -103,7 +103,12 @@ export function WorkerProfilePage({ id }: { id: string }) {
           Record work
         </button>
       )}
-      <WorkHistory worker={worker} records={records} onChanged={reloadWork} />
+      <EntryList
+        entries={buildHistory([worker], records, [])}
+        workers={[worker]}
+        emptyText="No work recorded yet."
+        onChanged={reloadWork}
+      />
 
       <div className="section-head">
         <h2>Money history</h2>
@@ -129,7 +134,12 @@ export function WorkerProfilePage({ id }: { id: string }) {
           </button>
         </div>
       )}
-      <MoneyHistory worker={worker} transactions={transactions} onChanged={reloadMoney} />
+      <EntryList
+        entries={buildHistory([worker], [], transactions)}
+        workers={[worker]}
+        emptyText="No advances or payments yet."
+        onChanged={reloadMoney}
+      />
     </section>
   )
 }
