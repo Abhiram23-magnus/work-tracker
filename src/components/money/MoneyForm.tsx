@@ -3,7 +3,7 @@ import type { Worker } from '../../types/worker'
 import { TRANSACTION_ACTION_LABELS, type Transaction, type TransactionType } from '../../types/transaction'
 import type { ValidationErrors } from '../../domain/validation'
 import { transactionService } from '../../services'
-import { paiseToRupees, rupeesToPaise } from '../../utils/currency'
+import { paiseToRupees, parseRupeeInput } from '../../utils/currency'
 import { todayISO } from '../../utils/dates'
 import { TextField } from '../ui/TextField'
 import { Notice } from '../ui/Notice'
@@ -48,7 +48,7 @@ export function MoneyForm({ type, workers, worker, transaction, onSaved, onCance
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
-    const input = { workerId, amount: rupeesToPaise(amount), date, type: kind, note }
+    const input = { workerId, amount: parseRupeeInput(amount), date, type: kind, note }
     const result = transaction
       ? await transactionService.update(transaction.id, input)
       : await transactionService.create(input)

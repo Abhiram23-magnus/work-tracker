@@ -35,7 +35,7 @@ describe('Ramesh scenario', () => {
     unwrap(await s.transactions.create({ workerId: ramesh.id, amount: 50000, date: '2026-10-06', type: 'wage-payment' }))
     expect(await summary()).toMatchObject({ balance: 0, status: 'cleared' })
 
-    unwrap(await s.transactions.create({ workerId: ramesh.id, amount: 50000, date: '2026-10-07', type: 'wage-payment' }))
+    unwrap(await s.transactions.create({ workerId: ramesh.id, amount: 50000, date: '2026-10-06', type: 'wage-payment' }))
     expect(await summary()).toMatchObject({ balance: -50000, status: 'advance-to-recover' })
   })
 })

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { hrefFor, type Route } from '../../app/routes'
 import { FieldScene } from './FieldScene'
 import { ThemeToggle } from '../theme/ThemeToggle'
+import { StorageNotice } from './StorageNotice'
 
 // Simple line icons help farmers who read slowly find the right tab.
 const ICONS = {
@@ -30,7 +31,10 @@ export function AppLayout({ route, children }: { route: Route; children: ReactNo
         </div>
         <ThemeToggle />
       </header>
-      <main className="app-main">{children}</main>
+      <main className="app-main">
+        <StorageNotice />
+        {children}
+      </main>
       <nav className="bottom-nav" aria-label="Main">
         {NAV.map((item) => (
           <a

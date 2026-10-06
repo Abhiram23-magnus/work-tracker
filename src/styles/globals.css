@@ -861,3 +861,12 @@ fieldset.field legend {
 .dialog-backdrop {
   background: rgb(0 0 0 / 0.6);
 }
+
+.storage-notice {
+  display: grid;
+  gap: 8px;
+}
+
+.storage-notice p {
+  margin: 0;
+}

@@ -8,6 +8,8 @@ export interface StorageBackend {
   getItem(key: string): string | null
   setItem(key: string, value: string): void
   removeItem(key: string): void
+  /** True when data is lost on reload (in-memory fallback). */
+  temporary?: boolean
 }
 
 export type CollectionName = 'workers' | 'workRecords' | 'transactions'
@@ -18,6 +20,8 @@ export interface StorageService {
   write<T>(collection: CollectionName, items: T[]): Promise<void>
   /** Collections that had to be repaired on read; the original text is kept under `<key>.corrupt`. */
   recoveredCollections(): CollectionName[]
+  /** False when the browser blocks storage and data only lives until the page is closed. */
+  readonly persistent: boolean
   /** Small preferences such as the theme. Missing or unreadable values come back as null. */
   readSetting(name: string): Promise<string | null>
   writeSetting(name: string, value: string | null): Promise<void>
@@ -34,6 +38,7 @@ const KEY_PREFIX = 'worker-tracker:v1:'
 export function createMemoryBackend(initial: Record<string, string> = {}): StorageBackend {
   const data = new Map(Object.entries(initial))
   return {
+    temporary: true,
     getItem: (key) => data.get(key) ?? null,
     setItem: (key, value) => void data.set(key, value),
     removeItem: (key) => void data.delete(key),
@@ -66,6 +71,8 @@ export function createStorageService(backend: StorageBackend = defaultBackend())
   }
 
   return {
+    persistent: !backend.temporary,
+
     async read<T>(collection: CollectionName, isValid: (item: unknown) => item is T) {
       let raw: string | null
       try {

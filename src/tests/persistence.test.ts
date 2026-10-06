@@ -66,3 +66,11 @@ describe('theme setting', () => {
     expect(backend.getItem('worker-tracker:v1:setting:theme')).toBeNull()
   })
 })
+
+describe('storage availability', () => {
+  it('reports the in-memory fallback as not persistent', () => {
+    expect(createStorageService(createMemoryBackend()).persistent).toBe(false)
+    const real: StorageBackend = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
+    expect(createStorageService(real).persistent).toBe(true)
+  })
+})

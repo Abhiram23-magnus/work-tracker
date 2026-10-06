@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { dashboardTotals, earnedAmountFor, summarizeWorker } from '../domain/calculations'
 import { accountStatusFor } from '../domain/accountStatus'
-import { isValidPhone, validateTransaction, validateWorker } from '../domain/validation'
+import { isValidPhone, validateTransaction, validateWorker, validateWorkRecord } from '../domain/validation'
 import { formatPaise, rupeesToPaise } from '../utils/currency'
 import { formatDisplayDate, isValidISODate } from '../utils/dates'
 import type { WorkRecord } from '../types/work'
@@ -127,6 +127,15 @@ describe('validation', () => {
     expect(Object.keys(errors).sort()).toEqual(['amount', 'date', 'type'])
   })
 
+  it('rejects future dates and amounts that look like typos', () => {
+    const ok = { workerId: 'a', amount: 100, date: '2026-10-06', type: 'advance' as const }
+    expect(validateTransaction(ok, '2026-10-06')).toEqual({})
+    expect(validateTransaction({ ...ok, date: '2026-10-07' }, '2026-10-06')).toHaveProperty('date')
+    expect(validateTransaction({ ...ok, amount: 10_00_000_01 }, '2026-10-06')).toHaveProperty('amount')
+    expect(validateWorkRecord({ workerId: 'a', status: 'present', date: '2026-10-07' }, '2026-10-06')).toHaveProperty('date')
+    expect(validateWorker({ name: 'A', workType: 'B', dailyWage: 1_00_000_01 })).toHaveProperty('dailyWage')
+  })
+
   it('checks real calendar dates', () => {
     expect(isValidISODate('2024-02-29')).toBe(true)
     expect(isValidISODate('2026-02-29')).toBe(false)
@@ -145,6 +154,9 @@ describe('currency', () => {
     expect(rupeesToPaise('1,500')).toBe(150000)
     expect(rupeesToPaise('abc')).toBeNaN()
     expect(rupeesToPaise('')).toBeNaN()
+    expect(rupeesToPaise('10.555')).toBeNaN()
+    expect(rupeesToPaise('1e3')).toBeNaN()
+    expect(rupeesToPaise('500 rs')).toBeNaN()
   })
 
   it('formats negative balances with the sign', () => {

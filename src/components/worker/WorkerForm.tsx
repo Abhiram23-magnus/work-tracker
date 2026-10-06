@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { Worker, WorkerInput } from '../../types/worker'
 import type { ValidationErrors } from '../../domain/validation'
 import type { Result } from '../../services/result'
-import { paiseToRupees, rupeesToPaise } from '../../utils/currency'
+import { paiseToRupees, parseRupeeInput } from '../../utils/currency'
 import { TextField } from '../ui/TextField'
 import { Notice } from '../ui/Notice'
 
@@ -36,7 +36,7 @@ export function WorkerForm({ initial, submitLabel, onSubmit, onCancel, onSaved }
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
-    const result = await onSubmit({ name, phone, workType, dailyWage: rupeesToPaise(wage) })
+    const result = await onSubmit({ name, phone, workType, dailyWage: parseRupeeInput(wage) })
     setSaving(false)
     if (result.ok) return onSaved(result.value)
     setErrors(result.error.fields ?? {})
