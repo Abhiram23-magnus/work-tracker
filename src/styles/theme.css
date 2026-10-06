@@ -1,18 +1,34 @@
-/* Basic tokens. The agricultural look comes in Phase 7 and dark mode in Phase 8. */
+/*
+ * "Modern digital farm notebook".
+ * Light: paddy-straw paper, field green, turmeric amber for money owed, brinjal purple for advances to recover.
+ */
 :root {
-  --bg: #faf7f0;
+  --bg: #f6f2e6;
   --surface: #ffffff;
-  --text: #1f2a1f;
-  --muted: #5d6b5d;
-  --border: #d9dccf;
-  --primary: #2f6b2f;
+  --surface-sunk: #efeadb;
+  --text: #1c2a1e;
+  --muted: #56655a;
+  --border: #d8d6c4;
+  --primary: #2e6b34;
+  --primary-strong: #1f4d25;
   --primary-text: #ffffff;
-  --warning: #a35c00;
-  --recover: #8a3c8a;
+  --warning: #9e5a00;
+  --recover: #7a3e7a;
   --danger: #b3261e;
   --danger-text: #ffffff;
-  --error-bg: #fdecea;
-  --radius: 12px;
+  --error-bg: #fbe9e6;
+  --focus: #1f4d25;
+
+  --scene-sky: #f3e7c4;
+  --scene-sun: #f2b443;
+  --scene-hill: #8fae6a;
+  --scene-tree: #4f7a3a;
+  --scene-field: #6e8f3e;
+  --scene-row: #4d6a2a;
+  --scene-overlay: linear-gradient(100deg, rgb(24 56 30 / 0.92) 0%, rgb(24 56 30 / 0.7) 45%, rgb(24 56 30 / 0.05) 100%);
+
+  --radius: 14px;
+  --radius-small: 10px;
   --tap: 48px;
   color-scheme: light;
 }
