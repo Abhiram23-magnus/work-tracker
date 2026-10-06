@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { workerService } from '../services'
 import { navigate } from '../app/routes'
-import { useWorkers } from '../hooks/useWorkers'
+import { useAppData } from '../hooks/useAppData'
+import { summarizeWorker } from '../domain/calculations'
 import { WORK_STATUS_LABELS, type WorkRecord } from '../types/work'
 import { formatPaise } from '../utils/currency'
 import { WorkerForm } from '../components/worker/WorkerForm'
@@ -12,7 +13,11 @@ import { Notice } from '../components/ui/Notice'
 type Mode = 'list' | 'add-worker' | 'record-work'
 
 export function WorkersPage() {
-  const { workers, loading, reload } = useWorkers()
+  const { workers, work, transactions, loading, reload } = useAppData()
+  const summaries = useMemo(
+    () => new Map(workers.map((w) => [w.id, summarizeWorker(work, transactions, w.id)])),
+    [workers, work, transactions],
+  )
   const [mode, setMode] = useState<Mode>('list')
   const [lastSaved, setLastSaved] = useState<WorkRecord>()
   // Bumped after each save so the work form resets for the next worker.
@@ -56,6 +61,7 @@ export function WorkersPage() {
             workers={workers}
             onSaved={(record) => {
               setLastSaved(record)
+              reload()
               setFormKey((k) => k + 1)
             }}
             onCancel={() => {
@@ -94,7 +100,7 @@ export function WorkersPage() {
           <button type="button" className="btn btn-primary btn-block btn-large" onClick={() => setMode('record-work')}>
             Record work
           </button>
-          <WorkerList workers={workers} />
+          <WorkerList workers={workers} summaries={summaries} />
         </>
       )}
     </section>

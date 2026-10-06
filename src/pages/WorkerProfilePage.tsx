@@ -10,6 +10,8 @@ import { useTransactions } from '../hooks/useTransactions'
 import { MoneyForm } from '../components/money/MoneyForm'
 import { MoneyHistory } from '../components/money/MoneyHistory'
 import type { TransactionType } from '../types/transaction'
+import { summarizeWorker } from '../domain/calculations'
+import { WorkerSummary } from '../components/money/WorkerSummary'
 import { WorkerForm } from '../components/worker/WorkerForm'
 import { DeleteWorker } from '../components/worker/DeleteWorker'
 import { Notice } from '../components/ui/Notice'
@@ -44,6 +46,7 @@ export function WorkerProfilePage({ id }: { id: string }) {
       </a>
       <h1>{worker.name}</h1>
       {error && <Notice>{error}</Notice>}
+      <WorkerSummary name={worker.name} summary={summarizeWorker(records, transactions)} />
 
       {editing ? (
         <WorkerForm
