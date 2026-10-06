@@ -8,6 +8,7 @@ import { formatPaise } from '../../utils/currency'
 import { formatDisplayDate, todayISO } from '../../utils/dates'
 import { Notice } from '../ui/Notice'
 import { StatusPicker } from './StatusPicker'
+import { workerOptionLabel } from '../../domain/workerLabel'
 
 interface WorkEntryFormProps {
   /** Workers to choose from. Ignored when editing or when `worker` is fixed. */
@@ -88,7 +89,7 @@ export function WorkEntryForm({ workers, worker, record, submitLabel = 'Save wor
               <option value="">Choose a worker</option>
               {workers.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name}
+                  {workerOptionLabel(w, workers)}
                 </option>
               ))}
             </select>

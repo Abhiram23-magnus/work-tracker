@@ -4,6 +4,7 @@ import { buildHistory, groupByDate, type HistoryFilters } from '../domain/histor
 import { ACCOUNT_STATUS_LABELS, type AccountStatus } from '../domain/accountStatus'
 import { formatDisplayDate } from '../utils/dates'
 import { EntryList } from '../components/history/EntryList'
+import { workerOptionLabel } from '../domain/workerLabel'
 
 const STATUSES = Object.keys(ACCOUNT_STATUS_LABELS) as AccountStatus[]
 
@@ -29,7 +30,7 @@ export function HistoryPage() {
               <option value="">All workers</option>
               {workers.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name}
+                  {workerOptionLabel(w, workers)}
                 </option>
               ))}
             </select>

@@ -7,6 +7,7 @@ import { paiseToRupees, parseRupeeInput } from '../../utils/currency'
 import { todayISO } from '../../utils/dates'
 import { TextField } from '../ui/TextField'
 import { Notice } from '../ui/Notice'
+import { workerOptionLabel } from '../../domain/workerLabel'
 
 interface MoneyFormProps {
   /** "advance" for Give Advance, "wage-payment" for Pay Wages. Fixed by the button the farmer tapped. */
@@ -83,7 +84,7 @@ export function MoneyForm({ type, workers, worker, transaction, onSaved, onCance
               <option value="">Choose a worker</option>
               {workers.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name}
+                  {workerOptionLabel(w, workers)}
                 </option>
               ))}
             </select>

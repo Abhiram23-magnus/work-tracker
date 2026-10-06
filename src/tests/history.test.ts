@@ -59,3 +59,15 @@ describe('history', () => {
     ])
   })
 })
+
+describe('workerOptionLabel', async () => {
+  const { workerOptionLabel } = await import('../domain/workerLabel')
+  const a = { ...worker('a'), name: 'Ramesh', workType: 'Harvesting' }
+  const b = { ...worker('b'), name: ' ramesh', workType: 'Tractor', phone: '98480' }
+  const c = { ...worker('c'), name: 'Anita' }
+  it('shows just the name when it is unique', () => expect(workerOptionLabel(c, [a, b, c])).toBe('Anita'))
+  it('tells same-named workers apart', () => {
+    expect(workerOptionLabel(a, [a, b, c])).toBe('Ramesh (Harvesting)')
+    expect(workerOptionLabel(b, [a, b, c])).toBe(' ramesh (Tractor, 98480)')
+  })
+})
