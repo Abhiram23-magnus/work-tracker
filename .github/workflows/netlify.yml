@@ -4,8 +4,8 @@ name: Test, deploy to Netlify, test production
 # 1. test:    typecheck/build, lint, unit tests, E2E tests (fake Supabase)
 # 2. deploy:  uploads the tested dist/ to the worker-tracker-farm Netlify site
 #             (needs the NETLIFY_AUTH_TOKEN secret; skipped without it)
-# 3. production: E2E tests against the live URL, plus the live OTP + RLS test against
-#             the real Supabase project when the LIVE_* test-number secrets are set
+# 3. production: E2E tests against the live URL, plus the live sign-in + RLS test against
+#             the real Supabase project when the LIVE_* test-account secrets are set
 on:
   push:
     branches: [claude/lucid-pasteur-m25bfh, main]
@@ -85,10 +85,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       E2E_BASE_URL: https://worker-tracker-farm.netlify.app/
-      LIVE_PHONE_A: ${{ secrets.LIVE_PHONE_A }}
-      LIVE_CODE_A: ${{ secrets.LIVE_CODE_A }}
-      LIVE_PHONE_B: ${{ secrets.LIVE_PHONE_B }}
-      LIVE_CODE_B: ${{ secrets.LIVE_CODE_B }}
+      LIVE_EMAIL_A: ${{ secrets.LIVE_EMAIL_A }}
+      LIVE_PASSWORD_A: ${{ secrets.LIVE_PASSWORD_A }}
+      LIVE_EMAIL_B: ${{ secrets.LIVE_EMAIL_B }}
+      LIVE_PASSWORD_B: ${{ secrets.LIVE_PASSWORD_B }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -102,17 +102,17 @@ jobs:
           html=$(curl -fsS "$PRODUCTION_URL")
           echo "$html" | head -20
           asset=$(echo "$html" | grep -o 'assets/index-[^"]*\.js' | head -1)
-          curl -fsS "$PRODUCTION_URL$asset" | grep -q "verifyOtp" && echo "Live bundle contains phone OTP sign-in."
-      - name: Supabase phone sign-in status (no SMS sent)
+          curl -fsS "$PRODUCTION_URL$asset" | grep -q "Sign in to your farm notebook." && echo "Live bundle contains the email sign-in screen."
+      - name: Supabase email sign-in status (no email sent)
         run: |
           curl -fsS "https://gzvsjkbpuguttmsodoiy.supabase.co/auth/v1/settings" \
             -H "apikey: sb_publishable_yjMK8lx8oHVzu1Ju34C0Zw_BU3GXo5v" > settings.json
-          jq '{phone: .external.phone, sms_provider, phone_autoconfirm, disable_signup}' settings.json | tee phone.json
-          echo "Supabase phone sign-in: $(jq -c . phone.json)" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$(jq -r '.external.phone' settings.json)" != "true" ]; then
-            echo "::warning::The Supabase Phone provider is switched off, so real users cannot sign in yet."
+          jq '{email: .external.email, mailer_autoconfirm, disable_signup}' settings.json | tee email.json
+          echo "Supabase email sign-in: $(jq -c . email.json)" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$(jq -r '.external.email' settings.json)" != "true" ]; then
+            echo "::warning::The Supabase Email provider is switched off, so nobody can sign in."
           fi
-      - name: E2E tests against production (+ live OTP/RLS test when LIVE_* secrets are set)
+      - name: E2E tests against production (+ live sign-in/RLS test when LIVE_* secrets are set)
         run: npx playwright test
       - uses: actions/upload-artifact@v4
         if: failure()

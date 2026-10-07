@@ -5,7 +5,6 @@ import { supabase } from '../services/supabaseClient'
 import { getStorage } from '../services/storageService'
 import { checkStorage } from '../services'
 import { createSyncService, type SyncState } from '../services/syncService'
-import { formatPhone } from './phone'
 
 type Phase = { name: 'loading' } | { name: 'signed-out' } | { name: 'signed-in'; session?: Session }
 
@@ -61,7 +60,7 @@ export function AuthProvider({ login, children }: { login: ReactNode; children: 
   const value = useMemo<AuthValue>(
     () => ({
       enabled: Boolean(supabase),
-      phone: phase.name === 'signed-in' ? formatPhone(phase.session?.user.phone) : undefined,
+      email: phase.name === 'signed-in' ? phase.session?.user.email : undefined,
       syncState,
       signOut: async () => void (await supabase?.auth.signOut()),
     }),

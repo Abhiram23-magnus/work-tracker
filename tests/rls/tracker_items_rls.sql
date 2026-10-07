@@ -29,9 +29,9 @@ create temp table results (n serial, line text);
 grant all on results to authenticated, anon;
 grant all on results_n_seq to authenticated, anon;
 
-insert into auth.users (id, instance_id, aud, role, phone, created_at, updated_at) values
-  ('a0000000-0000-4000-8000-00000000000a', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '910000000001', now(), now()),
-  ('b0000000-0000-4000-8000-00000000000b', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '910000000002', now(), now());
+insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at) values
+  ('a0000000-0000-4000-8000-00000000000a', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rls-a@test.local', now(), now()),
+  ('b0000000-0000-4000-8000-00000000000b', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rls-b@test.local', now(), now());
 
 -- User A writes a worker.
 select pg_temp.act_as('a0000000-0000-4000-8000-00000000000a');

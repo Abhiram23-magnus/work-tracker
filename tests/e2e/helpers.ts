@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
-import { FakeSupabase, VALID_CODE, type Device } from './fake-supabase'
+import { FakeSupabase, PASSWORD, type Device } from './fake-supabase'
 
 const openContexts: BrowserContext[] = []
 // Each test gets clean phones: close every profile a test opened.
@@ -34,18 +34,26 @@ export async function newPhone(browser: Browser, backend: FakeSupabase, name: st
   })
 }
 
-export async function signIn(page: Page, number: string, code = VALID_CODE) {
-  await page.getByLabel('Mobile number').fill(number)
-  await page.getByRole('button', { name: 'Send code' }).click()
-  await page.getByLabel('SMS code').fill(code)
-  await page.getByRole('button', { name: 'Verify and sign in' }).click()
-  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible()
+/** Creates the account the first time, signs in after that (the fake backend has confirmation off by default). */
+export async function signIn(page: Page, email: string, password = PASSWORD) {
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password').fill(password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  const wrong = page.getByText('Wrong email or password.')
+  const nav = page.getByRole('navigation', { name: 'Main' })
+  await expect(wrong.or(nav)).toBeVisible()
+  if (await wrong.isVisible()) {
+    await page.getByRole('button', { name: 'New here? Create an account' }).click()
+    await page.getByLabel('Password').fill(password)
+    await page.getByRole('button', { name: 'Create account' }).click()
+  }
+  await expect(nav).toBeVisible()
 }
 
 export async function signOut(page: Page) {
   await page.goto('./')
   await page.getByRole('button', { name: 'Sign out' }).click()
-  await expect(page.getByLabel('Mobile number')).toBeVisible()
+  await expect(page.getByLabel('Email')).toBeVisible()
 }
 
 export async function addWorker(page: Page, name: string) {

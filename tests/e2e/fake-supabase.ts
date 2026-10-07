@@ -1,15 +1,14 @@
 import type { BrowserContext, Route } from '@playwright/test'
 
 /**
- * In-memory stand-in for Supabase Auth (phone OTP) and the tracker_items REST table, shared by every
+ * In-memory stand-in for Supabase Auth (email + password) and the tracker_items REST table, shared by every
  * browser context in a test so contexts behave like separate phones. It applies the same rules as
  * the real RLS policies (user_id = auth.uid()) so app-level isolation can be checked without network
  * access. The real policies are tested separately by tests/rls/tracker_items_rls.sql and live.e2e.ts.
  */
-export const VALID_CODE = '246810'
-export const EXPIRED_CODE = '135790'
+export const PASSWORD = 'farm-pass-123'
 
-interface User { id: string; phone: string }
+interface User { id: string; email: string; password: string; confirmed: boolean }
 interface Row { user_id: string; collection: string; id: string; data: unknown; deleted: boolean; updated_at: string }
 
 export interface Device {
@@ -26,11 +25,16 @@ export class FakeSupabase {
   users = new Map<string, User>()
   rows = new Map<string, Row>()
   tokens = new Map<string, User>()
-  otpRequests: { device: string; phone: string; at: number }[] = []
+  authRequests: { device: string; path: string }[] = []
   private clock = Date.now()
 
-  /** smsRateLimit: refuse a second SMS to the same number within 60 s, like Supabase does. */
-  constructor(private options: { smsRateLimit?: boolean } = { smsRateLimit: true }) {}
+  /** confirmEmail: new accounts must confirm their email before signing in (Supabase's default). */
+  constructor(private options: { confirmEmail?: boolean } = {}) {}
+
+  /** Marks an account as confirmed, as if the person clicked the link in the email. */
+  confirm(email: string) {
+    this.users.get(email)!.confirmed = true
+  }
 
   private now() {
     return new Date(++this.clock).toISOString()
@@ -38,7 +42,7 @@ export class FakeSupabase {
 
   private issue(user: User) {
     const exp = Math.floor(Date.now() / 1000) + 3600
-    const access = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: user.id, role: 'authenticated', aud: 'authenticated', exp, phone: user.phone })}.fake${Math.random().toString(36).slice(2)}`
+    const access = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: user.id, role: 'authenticated', aud: 'authenticated', exp, email: user.email })}.fake${Math.random().toString(36).slice(2)}`
     this.tokens.set(access, user)
     return {
       access_token: access,
@@ -47,15 +51,15 @@ export class FakeSupabase {
       expires_at: exp,
       refresh_token: `r${Math.random()}`,
       user: {
-        id: user.id, aud: 'authenticated', role: 'authenticated', phone: user.phone,
-        phone_confirmed_at: new Date().toISOString(), app_metadata: { provider: 'phone' }, user_metadata: {},
+        id: user.id, aud: 'authenticated', role: 'authenticated', email: user.email,
+        email_confirmed_at: user.confirmed ? new Date().toISOString() : null, app_metadata: { provider: 'email' }, user_metadata: {},
         identities: [], created_at: new Date().toISOString(),
       },
     }
   }
 
-  user(phoneDigits: string) {
-    return this.users.get(phoneDigits)
+  user(email: string) {
+    return this.users.get(email)
   }
 
   rowsFor(userId: string) {
@@ -85,25 +89,23 @@ export class FakeSupabase {
     const me = this.tokens.get((req.headers()['authorization'] ?? '').replace(/^Bearer /, ''))
 
     switch (url.pathname) {
-      case '/auth/v1/otp': {
-        if (!/^\+?\d{8,15}$/.test(body.phone)) return this.json(route, 400, { code: 'validation_failed', msg: 'Invalid phone number format' })
-        // Like Supabase: at most one SMS per number per 60 s.
-        const last = [...this.otpRequests].reverse().find((r) => r.phone === body.phone)
-        if (this.options.smsRateLimit && last && Date.now() - last.at < 60_000) {
-          this.otpRequests.push({ device: device.name, phone: body.phone, at: Date.now() })
-          return this.json(route, 429, { code: 'over_sms_send_rate_limit', msg: 'For security purposes, you can only request this after 60 seconds.' })
-        }
-        this.otpRequests.push({ device: device.name, phone: body.phone, at: Date.now() })
-        return this.json(route, 200, {})
+      case '/auth/v1/signup': {
+        this.authRequests.push({ device: device.name, path: url.pathname })
+        const email = String(body.email)
+        if (this.users.has(email)) return this.json(route, 422, { code: 'user_already_exists', msg: 'User already registered' })
+        const user: User = { id: crypto.randomUUID(), email, password: body.password, confirmed: !this.options.confirmEmail }
+        this.users.set(email, user)
+        // With confirmation on, Supabase returns the user but no session.
+        return this.json(route, 200, user.confirmed ? this.issue(user) : this.issue(user).user)
       }
-      case '/auth/v1/verify': {
-        if (body.token !== VALID_CODE) {
-          // Supabase answers wrong and expired codes with the same error.
-          return this.json(route, 403, { code: 'otp_expired', error_code: 'otp_expired', msg: 'Token has expired or is invalid' })
+      case '/auth/v1/token': {
+        this.authRequests.push({ device: device.name, path: url.pathname })
+        const user = this.users.get(String(body.email))
+        if (!user || user.password !== body.password) {
+          return this.json(route, 400, { code: 'invalid_credentials', error_code: 'invalid_credentials', msg: 'Invalid login credentials' })
         }
-        const digits = String(body.phone).replace('+', '')
-        if (!this.users.has(digits)) this.users.set(digits, { id: crypto.randomUUID(), phone: digits })
-        return this.json(route, 200, this.issue(this.users.get(digits)!))
+        if (!user.confirmed) return this.json(route, 400, { code: 'email_not_confirmed', msg: 'Email not confirmed' })
+        return this.json(route, 200, this.issue(user))
       }
       case '/auth/v1/logout':
         return route.fulfill({ status: 204, headers: CORS })
