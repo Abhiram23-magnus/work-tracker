@@ -4,8 +4,8 @@ import type { SyncState } from '../services/syncService'
 export interface AuthValue {
   /** False when no Supabase project is configured (local-only mode). */
   enabled: boolean
-  /** Signed-in phone number, formatted for display. */
-  phone?: string
+  /** Signed-in email address. */
+  email?: string
   syncState: SyncState
   signOut: () => Promise<void>
 }
