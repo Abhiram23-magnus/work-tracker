@@ -3,6 +3,7 @@
 | What | Where | Backend | Run |
 |---|---|---|---|
 | Unit tests (money maths, sync merge, email helpers…) | `src/tests/*.test.ts` | none | `npm test` |
+| The real build: opens on the dashboard with no login, saves on the phone, offline | `tests/e2e/local.e2e.ts` | none | `npm run test:e2e` |
 | Email sign-in, sign-up, confirmation and errors | `tests/e2e/login.e2e.ts` | fake Supabase | `npm run test:e2e` |
 | Multi-user isolation, multi-device sync, offline, logout | `tests/e2e/sync.e2e.ts` | fake Supabase | `npm run test:e2e` |
 | Real email sign-in + real RLS through the REST API | `tests/e2e/live.e2e.ts` | **real** Supabase | see below |
@@ -10,20 +11,22 @@
 
 ## E2E tests (Playwright)
 
-`npm run test:e2e` builds the app, serves it on port 4180 and drives it in Chromium at phone size.
+The live app has login switched off (no Supabase keys). `npm run test:e2e` builds it twice: the real build on
+port 4181 for `local.e2e.ts`, and a build with dummy keys on port 4180 so the (switched-off) login and sync code
+stays tested. It drives both in Chromium at phone size.
 Each browser context acts as a separate phone. The fake Supabase in `tests/e2e/fake-supabase.ts` answers
 the same auth and `tracker_items` requests as the real project and applies the same rule as the RLS
 policies (`user_id = auth.uid()`), so these tests need no network access and send no email.
 
-To run the suite against a deployed site instead of a local build:
+To check a deployed site:
 
 ```sh
-E2E_BASE_URL=https://worker-tracker-farm.netlify.app/ npm run test:e2e
+E2E_BASE_URL=https://worker-tracker-farm.netlify.app/ npx playwright test local
 ```
 
 ## Live test (real Supabase, real sign-in)
 
-`live.e2e.ts` is skipped unless four variables are set. It signs two users in through the real login
+Only useful when login is switched back on (see the main README). `live.e2e.ts` is skipped unless four variables are set. It signs two users in through the real login
 screen, checks that a wrong password is rejected, then uses each user's real access token against the
 Supabase REST API to check SELECT, INSERT, UPDATE and DELETE isolation. It deletes the row it created.
 
@@ -46,12 +49,11 @@ and rolls everything back.
 
 `.github/workflows/netlify.yml` runs on every push to `claude/lucid-pasteur-m25bfh` or `main` (or manually from the
 Actions tab). GitHub's servers run the unit and E2E tests, deploy the tested `dist/` to the `worker-tracker-farm`
-Netlify site, then run the E2E suite against https://worker-tracker-farm.netlify.app/ and report whether the
-Supabase Email provider is switched on.
+Netlify site, then check that https://worker-tracker-farm.netlify.app/ serves this build and opens on the dashboard
+without login.
 
 Repository secrets (Settings → Secrets and variables → Actions):
 
 | Secret | Needed for |
 |---|---|
 | `NETLIFY_AUTH_TOKEN` | Deploying (Netlify → User settings → Applications → Personal access tokens). Without it the deploy and production jobs are skipped. |
-| `LIVE_EMAIL_A`, `LIVE_PASSWORD_A`, `LIVE_EMAIL_B`, `LIVE_PASSWORD_B` | The live sign-in + RLS test against the real Supabase project (two confirmed test accounts). Without them that one test is skipped. |

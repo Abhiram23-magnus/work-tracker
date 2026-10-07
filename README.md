@@ -21,25 +21,21 @@ pages → components / hooks → domain (calculations, validation, history) → 
 - Work records keep the daily wage they were saved with, so wage changes never rewrite history.
 - Balance = earnings − (advances + wage payments). Above 0 is Pending to Pay, 0 is Cleared, below 0 is Advance to Recover.
 
-## Accounts and sync (Supabase)
+## Login and cloud sync (switched off)
 
-Without Supabase keys the app runs exactly as before: one person, data only on this phone, no login.
-With keys, everyone signs in with their email and a password (Supabase email auth), and their data stays
-private to their account. "Create account" signs up; if email confirmation is on in Supabase
-(Authentication → Sign In / Providers → Email → Confirm email), the person opens the link in their inbox first.
-Supabase's built-in mailer only sends a few emails per hour; for many users connect your own SMTP
-(Authentication → Emails → SMTP Settings) or turn "Confirm email" off.
+The live app has **no login**: it opens straight to the dashboard and keeps all data on the phone.
 
-1. Create a Supabase project and run `supabase/migrations/0001_tracker_items.sql` in its SQL editor.
-   It creates one table, `tracker_items`, with row-level security so a user can only read and write their own rows.
-2. The project `worker-tracker` (ap-south-1) is already set up and its public keys are in `.env.production`,
-   so production builds (including Netlify) use it. For `npm run dev`, copy them to `.env.local`.
-   To use another project, change those two values.
-3. Rebuild. The first person to sign in on a phone that already has data gets that data moved into their account.
+Email login and cloud sync (Supabase) are still in the code but only switch on when the build has
+Supabase keys. To turn them back on, create `.env.production` with:
 
-The phone keeps working offline. Changes save locally first and upload when the connection returns;
-other phones pick them up on their next sync (on open, on reconnect, and after each change).
-If the same record is edited on two phones, the later edit wins.
+```
+VITE_SUPABASE_URL=https://gzvsjkbpuguttmsodoiy.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_yjMK8lx8oHVzu1Ju34C0Zw_BU3GXo5v
+```
+
+With keys, everyone signs in with email and password, data syncs between phones, and the `tracker_items`
+table's row-level security (`supabase/migrations/0001_tracker_items.sql`) keeps each account's rows private.
+Data saved without login moves to the first account that signs in on that phone.
 
 ## Dashboard and export
 
