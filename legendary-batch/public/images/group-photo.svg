@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050302"/><stop offset=".6" stop-color="#1a0d08"/><stop offset="1" stop-color="#2b160b"/></linearGradient>
+<radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffd27a" stop-opacity=".9"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="600" height="800" fill="url(#sky)"/>
+<rect x="30" y="380" width="170" height="120" fill="#c4202f"/><rect x="430" y="400" width="120" height="100" fill="#a3182a"/>
+<circle cx="330" cy="360" r="70" fill="url(#glow)"/><rect x="318" y="360" width="24" height="140" fill="#2a1a10"/>
+<g fill="#120b07"><circle cx="180" cy="430" r="42"/><rect x="120" y="470" width="120" height="330" rx="40"/>
+<circle cx="300" cy="450" r="40"/><rect x="240" y="490" width="120" height="310" rx="40"/>
+<circle cx="420" cy="430" r="42"/><rect x="360" y="470" width="120" height="330" rx="40"/></g>
+<text x="300" y="120" text-anchor="middle" font-family="Impact,sans-serif" font-size="34" fill="#e9d3a8" opacity=".9">PLACEHOLDER</text>
+<text x="300" y="160" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#e9d3a8" opacity=".7">add public/images/group-photo.jpg</text>
+<text x="560" y="780" text-anchor="end" font-family="monospace" font-size="20" fill="#ff5a2a">OCT 26 1985</text>
+</svg>
