@@ -1,6 +1,6 @@
 // Offline support: pages load from the network when possible and fall back to the cached app shell.
 // Built files have hashed names, so serving them from cache first is safe.
-const CACHE = 'worker-tracker-v2'
+const CACHE = 'worker-tracker-v3'
 
 self.addEventListener('install', (event) => {
   // Cache the page plus the script, styles and icons it links, so the app opens offline from the very first install.
@@ -27,7 +27,9 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      // Always ask the server whether the page changed (hosts like GitHub Pages let browsers reuse it
+      // for 10 minutes), so a new version shows on the next open instead of the old cached one.
+      fetch(request.url, { cache: 'no-cache', credentials: 'same-origin' })
         .then((response) => {
           const copy = response.clone()
           caches.open(CACHE).then((cache) => cache.put('./index.html', copy))

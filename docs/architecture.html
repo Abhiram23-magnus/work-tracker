@@ -155,6 +155,7 @@ flowchart TB
 
   <section>
     <h2>The sign-in chain</h2>
+    <p class="link"><b>Currently switched off:</b> the live app is built without Supabase keys, so it opens straight to the dashboard with no login and keeps data on the phone. Adding the keys back in <code>.env.production</code> turns everything below on again.</p>
     <p class="muted">How an email sign-in ends up deciding which rows a person can see. Each step hands one thing to the next.</p>
     <ol class="chain">
       <li><b>Email</b><span>Farmer types an email and password. <code>normalizeEmail()</code> trims and lower-cases it; the password needs 6 or more characters.</span></li>
@@ -245,7 +246,7 @@ flowchart TB
       <article class="phase">
         <div class="dot">4</div>
         <div class="card">
-          <div class="card-head"><h3>Email login and per-user data</h3><span class="pill done">Built</span></div>
+          <div class="card-head"><h3>Email login and per-user data</h3><span class="pill blocked">Switched off</span></div>
           <p>People sign in with their email and a password through Supabase Auth. "Create account" signs up; if email confirmation is on, they open the link in their inbox first. After sign-in, storage switches to that user's own area on the phone, so two people sharing a phone never see each other's data. Data saved before accounts existed moves to the first person who signs in.</p>
           <div class="cols">
             <div class="col"><h4>Frontend</h4>
@@ -270,7 +271,7 @@ flowchart TB
       <article class="phase">
         <div class="dot">5</div>
         <div class="card">
-          <div class="card-head"><h3>Cloud sync backend</h3><span class="pill done">Built</span></div>
+          <div class="card-head"><h3>Cloud sync backend</h3><span class="pill blocked">Switched off</span></div>
           <p>Every save goes to the phone first, then uploads in the background. Other phones download changes when they open the app, come back online, or after a save. If two phones edit the same record, the later edit wins.</p>
           <div class="cols">
             <div class="col"><h4>Frontend (sync engine)</h4>
@@ -296,12 +297,11 @@ flowchart TB
         <div class="dot">6</div>
         <div class="card">
           <div class="card-head"><h3>Deploy and live test</h3><span class="pill done">Live</span></div>
-          <p>Every merge to <code>main</code> is built by GitHub Actions and published to GitHub Pages at <code>https://abhiram23-magnus.github.io/work-tracker/</code>. The build points at Supabase project <code>gzvsjkbpuguttmsodoiy</code> through <code>.env.production</code>. A second workflow can also deploy to Netlify once a <code>NETLIFY_AUTH_TOKEN</code> secret is added.</p>
+          <p>Every merge to <code>main</code> is built by GitHub Actions and published to GitHub Pages at <code>https://abhiram23-magnus.github.io/work-tracker/</code>. The live build has no Supabase keys, so login and sync are off and the app opens on the dashboard. A second workflow can also deploy to Netlify once a <code>NETLIFY_AUTH_TOKEN</code> secret is added.</p>
           <div class="cols">
             <div class="col"><h4>Still to do</h4>
               <ul class="files">
-                <li>Add the site URL in Supabase → Authentication → URL Configuration, and decide on "Confirm email"</li>
-                <li>Run <code>tests/e2e/live.e2e.ts</code> against the production URL</li>
+                <li>Only if login is switched back on: add the site URL in Supabase → Authentication → URL Configuration</li>
               </ul>
             </div>
             <div class="col"><h4>Already verified</h4>
