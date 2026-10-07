@@ -24,7 +24,12 @@ pages → components / hooks → domain (calculations, validation, history) → 
 ## Accounts and sync (Supabase)
 
 Without Supabase keys the app runs exactly as before: one person, data only on this phone, no login.
-With keys, everyone signs in with email and password and their data stays private to their account.
+With keys, everyone signs in with their mobile number and a code sent by SMS (Supabase phone OTP),
+and their data stays private to their account. The first sign-in with a number creates the account.
+
+Phone sign-in needs the Phone provider switched on in Supabase (Authentication → Sign In / Providers → Phone)
+with an SMS provider such as Twilio, MessageBird, Vonage or Textlocal. For testing without sending real SMS,
+add test numbers with fixed codes under the same Phone settings.
 
 1. Create a Supabase project and run `supabase/migrations/0001_tracker_items.sql` in its SQL editor.
    It creates one table, `tracker_items`, with row-level security so a user can only read and write their own rows.
