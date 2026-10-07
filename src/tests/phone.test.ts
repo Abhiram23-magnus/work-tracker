@@ -24,8 +24,11 @@ describe('toE164', () => {
 })
 
 describe('isOtpShaped', () => {
-  it('needs 6 to 10 digits', () => {
+  it('accepts every code length Supabase can send (6 to 10 digits)', () => {
     expect(isOtpShaped('123456')).toBe(true)
+    expect(isOtpShaped('12345678')).toBe(true)
+    expect(isOtpShaped('1234567890')).toBe(true)
+    expect(isOtpShaped('12345678901')).toBe(false)
     expect(isOtpShaped('12345')).toBe(false)
     expect(isOtpShaped('12345a')).toBe(false)
   })

@@ -81,6 +81,14 @@ ul.files li { display: grid; gap: 1px; }
 .link { border-left: 3px solid var(--plum); background: var(--plum-soft); padding: 10px 12px; border-radius: 0 8px 8px 0; font-size: 0.93rem; }
 .link b { color: var(--plum); }
 
+/* Sign-in chain */
+.chain { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: step; }
+.chain li { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: 4px 14px; align-items: baseline; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; position: relative; }
+.chain li + li::before { content: "↓"; position: absolute; top: -14px; left: 2rem; color: var(--muted); font-size: 0.8rem; }
+.chain b { font-family: var(--display); color: var(--green); }
+.chain span { font-size: 0.93rem; min-width: 0; }
+@media (max-width: 520px) { .chain li { grid-template-columns: 1fr; } }
+
 /* Flows */
 .flows { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 .flow { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
@@ -128,12 +136,12 @@ flowchart TB
     UI --> COMP --> DOM --> SVC --> STORE --> LS
   end
   subgraph CLOUD["Supabase (backend)"]
-    AUTH["Auth<br/>email + password"]
+    AUTH["Auth<br/>phone number + SMS code"]
     DB[("Postgres<br/>tracker_items + RLS")]
   end
   NET["Netlify<br/>static hosting"]
   NET -- "serves HTML/JS once" --> SW
-  UI -- "sign in / sign up" --> AUTH
+  UI -- "send code · verify code" --> AUTH
   SVC -- "push changes · pull updates" --> DB
   AUTH -. "JWT identifies user for RLS" .-> DB
 </pre>
@@ -142,6 +150,22 @@ flowchart TB
         <span>The phone is always the source the app reads from. Supabase is the shared copy that keeps phones in step.</span>
       </div>
     </div>
+  </section>
+
+
+  <section>
+    <h2>The sign-in chain</h2>
+    <p class="muted">How a phone number ends up deciding which rows a person can see. Each step hands one thing to the next.</p>
+    <ol class="chain">
+      <li><b>Phone</b><span>Farmer picks the country code and types the mobile number. <code>toE164()</code> turns it into <code>+919876543210</code>.</span></li>
+      <li><b>OTP</b><span><code>signInWithOtp({ phone })</code> asks Supabase to send an SMS code; <code>verifyOtp({ phone, token, type: 'sms' })</code> checks it. Resend waits 60 s.</span></li>
+      <li><b>Supabase Auth</b><span>Creates the account on the first verified sign-in and returns a session. The login token (JWT) carries the user id as <code>sub</code>. The session is saved on the phone, so the app opens offline.</span></li>
+      <li><b>user_id</b><span><code>AuthProvider</code> reads <code>session.user.id</code>. The same number always maps to the same id, on every phone.</span></li>
+      <li><b>localStorage</b><span><code>storageService.setScope("u:&lt;user_id&gt;:")</code>: each person on a shared phone has a separate area.</span></li>
+      <li><b>sync</b><span><code>syncService</code> uploads new, edited and deleted records under that <code>user_id</code> and downloads changes from other phones.</span></li>
+      <li><b>tracker_items</b><span>One row per worker, work day or payment: <code>user_id, collection, id, data, deleted, updated_at</code>.</span></li>
+      <li><b>RLS</b><span>Four policies allow SELECT, INSERT, UPDATE and DELETE only where <code>user_id = auth.uid()</code>, the id inside the login token. Tested on the real database by <code>tests/rls/tracker_items_rls.sql</code>.</span></li>
+    </ol>
   </section>
 
   <section>
@@ -221,19 +245,20 @@ flowchart TB
       <article class="phase">
         <div class="dot">4</div>
         <div class="card">
-          <div class="card-head"><h3>Login and per-user data</h3><span class="pill done">Built</span></div>
-          <p>Email and password accounts through Supabase Auth. After sign-in, storage switches to that user's own area on the phone, so two people sharing a phone never see each other's data. Data saved before accounts existed moves to the first person who signs in.</p>
+          <div class="card-head"><h3>Phone OTP login and per-user data</h3><span class="pill done">Built</span></div>
+          <p>People sign in with their mobile number and a code sent by SMS through Supabase Auth. The first verified sign-in creates the account. After sign-in, storage switches to that user's own area on the phone, so two people sharing a phone never see each other's data. Data saved before accounts existed moves to the first person who signs in.</p>
           <div class="cols">
             <div class="col"><h4>Frontend</h4>
               <ul class="files">
-                <li><code>auth/LoginPage.tsx</code><span class="muted">Sign in, create account, email confirmation message</span></li>
+                <li><code>auth/LoginPage.tsx</code><span class="muted">Country code and mobile number, then the SMS code; Resend after 60 s, Change number, clear errors for wrong or expired codes, rate limits and no internet</span></li>
+                <li><code>auth/phone.ts</code><span class="muted">Number clean-up to +91… form, 6 to 10 digit code check, error messages</span></li>
                 <li><code>auth/AuthProvider.tsx</code><span class="muted">Shows login until signed in, then scopes storage and starts sync</span></li>
-                <li><code>components/account/AccountCard.tsx</code><span class="muted">Signed-in email, sync status, Sign out</span></li>
+                <li><code>components/account/AccountCard.tsx</code><span class="muted">Signed-in phone number, sync status, Sign out</span></li>
               </ul>
             </div>
             <div class="col"><h4>Backend</h4>
               <ul class="files">
-                <li>Supabase Auth<span class="muted">Issues the login token (JWT); the session is saved on the phone, so it works offline</span></li>
+                <li>Supabase Auth, Phone provider<span class="muted">Sends the SMS code through the configured SMS provider and issues the login token (JWT); the session is saved on the phone, so it works offline</span></li>
                 <li><code>services/supabaseClient.ts</code><span class="muted">No keys means local-only mode with no login</span></li>
               </ul>
             </div>
@@ -271,19 +296,20 @@ flowchart TB
         <div class="dot">6</div>
         <div class="card">
           <div class="card-head"><h3>Deploy and live test</h3><span class="pill blocked">Waiting</span></div>
-          <p>The build points at Supabase project <code>gzvsjkbpuguttmsodoiy</code> through <code>.env.production</code>. The live site still runs the old version, because this cloud environment's network blocks Netlify and Supabase.</p>
+          <p>The build points at Supabase project <code>gzvsjkbpuguttmsodoiy</code> through <code>.env.production</code>. The live site still runs the old version: the cloud environment used for development cannot reach Netlify or the Supabase API.</p>
           <div class="cols">
             <div class="col"><h4>Still to do</h4>
               <ul class="files">
                 <li>Deploy <code>dist/</code> to Netlify site <code>worker-tracker-farm</code></li>
-                <li>Set the Site URL in Supabase to <code>https://worker-tracker-farm.netlify.app</code></li>
-                <li>Sign up, add a worker, and check it appears on a second device</li>
+                <li>Enable the Phone provider in Supabase with an SMS provider, or test numbers</li>
+                <li>Run <code>tests/e2e/live.e2e.ts</code> against the production URL</li>
               </ul>
             </div>
             <div class="col"><h4>Already verified</h4>
               <ul class="files">
-                <li>54 unit tests, lint and build pass</li>
-                <li>Excel and both PDFs download in a real browser</li>
+                <li>Unit tests, lint and build pass</li>
+                <li>E2E tests (fake Supabase): OTP, resend, two users, two phones, offline, logout</li>
+                <li>RLS on the real database: 14 SELECT / INSERT / UPDATE / DELETE checks</li>
                 <li>Supabase security advisor reports no issues</li>
               </ul>
             </div>
@@ -341,9 +367,12 @@ sequenceDiagram
   participant L as localStorage
   participant S as Supabase Auth
   participant D as tracker_items (RLS)
-  U->>A: Email + password
-  A->>S: signInWithPassword
-  S-->>A: Session (JWT with user id)
+  U->>A: Country code + mobile number
+  A->>S: signInWithOtp(phone)
+  S-->>U: SMS with code
+  U->>A: Code
+  A->>S: verifyOtp(phone, code, sms)
+  S-->>A: Session (JWT, sub = user id)
   A->>L: setScope("u:userId:"), move old data once
   A->>D: Push records not yet uploaded
   A->>D: Pull rows changed since last pull

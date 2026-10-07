@@ -35,8 +35,11 @@ export function toE164(countryCode: string, typed: string): string | null {
   return `+${digits}`
 }
 
-/** Supabase sends 6-digit codes by default; the length can be raised to 10 in the dashboard. */
-export const isOtpShaped = (code: string) => /^\d{6,10}$/.test(code)
+/** Supabase's SMS code length is set in the dashboard (6 by default, up to 10), so accept that whole range. */
+export const OTP_MIN_LENGTH = 6
+export const OTP_MAX_LENGTH = 10
+export const isOtpShaped = (code: string) =>
+  new RegExp(`^\\d{${OTP_MIN_LENGTH},${OTP_MAX_LENGTH}}$`).test(code)
 
 /** "+919876543210" → "+91 98765 43210" for display. Other countries keep the plain E.164 form. */
 export function formatPhone(e164: string | undefined): string | undefined {

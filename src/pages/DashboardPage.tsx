@@ -40,6 +40,7 @@ export function DashboardPage() {
             + Add your first worker
           </a>
         </div>
+        <AccountCard />
       </section>
     )
   }

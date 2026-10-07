@@ -1,8 +1,17 @@
-import { useEffect, useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../services/supabaseClient'
 import { TextField } from '../components/ui/TextField'
 import { Notice } from '../components/ui/Notice'
-import { COUNTRY_CODES, RESEND_COOLDOWN_SECONDS, formatPhone, isOtpShaped, otpErrorMessage, toE164 } from './phone'
+import {
+  COUNTRY_CODES,
+  OTP_MAX_LENGTH,
+  OTP_MIN_LENGTH,
+  RESEND_COOLDOWN_SECONDS,
+  formatPhone,
+  isOtpShaped,
+  otpErrorMessage,
+  toE164,
+} from './phone'
 
 const NETWORK_ERROR = 'Could not reach the server. Check your internet connection and try again.'
 
@@ -20,6 +29,10 @@ export function LoginPage() {
   const [error, setError] = useState<string>()
   const [info, setInfo] = useState<string>()
   const [cooldown, setCooldown] = useState(0)
+  // Number the last code went to, so going back and re-entering it can't skip the resend wait.
+  const [lastSentTo, setLastSentTo] = useState<string>()
+  // Blocks a second request from a fast double tap before React re-renders the disabled button.
+  const inFlight = useRef(false)
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -28,7 +41,8 @@ export function LoginPage() {
   }, [cooldown])
 
   async function sendCode(phone: string) {
-    if (!supabase) return
+    if (!supabase || inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     setError(undefined)
     setInfo(undefined)
@@ -39,12 +53,14 @@ export function LoginPage() {
         return
       }
       setSentTo(phone)
+      setLastSentTo(phone)
       setCode('')
       setCooldown(RESEND_COOLDOWN_SECONDS)
       setInfo(`We sent a code by SMS to ${formatPhone(phone)}.`)
     } catch {
       setError(NETWORK_ERROR)
     } finally {
+      inFlight.current = false
       setBusy(false)
     }
   }
@@ -53,6 +69,13 @@ export function LoginPage() {
     event.preventDefault()
     const phone = toE164(countryCode, number)
     if (!phone) return setError('Enter a valid mobile number, for example 98765 43210.')
+    if (phone === lastSentTo && cooldown > 0) {
+      // A code for this number is still on its way; reuse it instead of asking for another.
+      setError(undefined)
+      setSentTo(phone)
+      setInfo(`A code was already sent to ${formatPhone(phone)}. You can ask for a new one in ${cooldown}s.`)
+      return
+    }
     void sendCode(phone)
   }
 
@@ -60,7 +83,11 @@ export function LoginPage() {
     event.preventDefault()
     if (!supabase || !sentTo) return
     const token = code.trim()
-    if (!isOtpShaped(token)) return setError('Enter the code from the SMS (6 digits).')
+    if (!isOtpShaped(token)) {
+      return setError(`Enter the full code from the SMS (${OTP_MIN_LENGTH} to ${OTP_MAX_LENGTH} digits).`)
+    }
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     setError(undefined)
     try {
@@ -70,6 +97,7 @@ export function LoginPage() {
     } catch {
       setError(NETWORK_ERROR)
     } finally {
+      inFlight.current = false
       setBusy(false)
     }
   }
@@ -124,10 +152,10 @@ export function LoginPage() {
               label="SMS code"
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={10}
-              placeholder="123456"
+              hint="The code is in the SMS we just sent."
               value={code}
-              onChange={(v) => setCode(v.replace(/\D/g, ''))}
+              // Keep digits only, then cap the length, so a pasted "Code: 123456" still works.
+              onChange={(v) => setCode(v.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
             />
             <button type="submit" className="btn btn-primary btn-block btn-large" disabled={busy}>
               {busy ? 'Checking…' : 'Verify and sign in'}
