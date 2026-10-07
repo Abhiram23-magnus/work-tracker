@@ -8,6 +8,9 @@ import type { TransactionType } from '../types/transaction'
 import { WorkEntryForm } from '../components/work/WorkEntryForm'
 import { MoneyForm } from '../components/money/MoneyForm'
 import { Notice } from '../components/ui/Notice'
+import { Insights } from '../components/dashboard/Insights'
+import { ExportButtons } from '../components/export/ExportButtons'
+import { AccountCard } from '../components/account/AccountCard'
 
 type Action = 'work' | TransactionType
 
@@ -37,6 +40,7 @@ export function DashboardPage() {
             + Add your first worker
           </a>
         </div>
+        <AccountCard />
       </section>
     )
   }
@@ -83,6 +87,13 @@ export function DashboardPage() {
           </div>
         </div>
       )}
+
+      <Insights workers={workers} work={work} transactions={transactions} today={today} />
+
+      <h2 className="section-head">Export data</h2>
+      <ExportButtons workers={workers} work={work} transactions={transactions} />
+
+      <AccountCard />
     </section>
   )
 }

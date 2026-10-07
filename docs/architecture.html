@@ -1,0 +1,403 @@
+<title>Worker Tracker Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a field notebook — one reading column, phases stacked as a connected ledger with a spine on the left. */
+:root {
+  --bg: #f4f1e6;
+  --surface: #fffdf7;
+  --ink: #1c2a1e;
+  --muted: #56655a;
+  --line: #d8d4bf;
+  --green: #2e6b34;
+  --green-soft: #e3eedc;
+  --amber: #9e5a00;
+  --amber-soft: #f6e8cf;
+  --plum: #7a3e7a;
+  --plum-soft: #f0e2ef;
+  --code-bg: #efeadb;
+  --display: "Bitter", Georgia, serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1712; --surface: #17221a; --ink: #e9f0e6; --muted: #a6b5a8; --line: #2c3a2f;
+    --green: #8fd197; --green-soft: #1f3423; --amber: #f0b45c; --amber-soft: #3a2c15;
+    --plum: #d9a3d9; --plum-soft: #352536; --code-bg: #1d2a20; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1712; --surface: #17221a; --ink: #e9f0e6; --muted: #a6b5a8; --line: #2c3a2f;
+  --green: #8fd197; --green-soft: #1f3423; --amber: #f0b45c; --amber-soft: #3a2c15;
+  --plum: #d9a3d9; --plum-soft: #352536; --code-bg: #1d2a20; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--body); padding: 32px 16px 64px; }
+.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.2; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(1.9rem, 5vw, 2.6rem); }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.1rem; }
+p { margin: 0; max-width: 66ch; }
+code { font-family: var(--mono); font-size: 0.86em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.muted { color: var(--muted); }
+.eyebrow { font: 600 0.75rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); }
+header { display: grid; gap: 12px; }
+
+/* Stack strip */
+.stack { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.stack div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 4px; min-width: 0; }
+.stack b { font-family: var(--display); }
+.stack span { color: var(--muted); font-size: 0.9rem; }
+
+/* Big picture */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
+.diagram { overflow-x: auto; }
+.diagram pre.mermaid { margin: 0; background: transparent; min-width: 560px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 0.85rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+
+/* Phase ledger */
+.phases { display: grid; gap: 0; position: relative; }
+.phase { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; position: relative; padding-bottom: 28px; }
+.phase:last-child { padding-bottom: 0; }
+.phase::before { content: ""; position: absolute; left: 21px; top: 44px; bottom: 0; width: 2px; background: var(--line); }
+.phase:last-child::before { display: none; }
+.dot { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 700 1rem var(--display); background: var(--green-soft); color: var(--green); border: 2px solid var(--green); }
+.phase.pending .dot { background: var(--amber-soft); color: var(--amber); border-color: var(--amber); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+.pill { font: 600 0.72rem/1 var(--mono); letter-spacing: 0.05em; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; }
+.pill.done { background: var(--green-soft); color: var(--green); }
+.pill.blocked { background: var(--amber-soft); color: var(--amber); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.col { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.col h4 { margin: 0; font: 700 0.78rem/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+ul.files { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 0.93rem; }
+ul.files li { display: grid; gap: 1px; }
+.link { border-left: 3px solid var(--plum); background: var(--plum-soft); padding: 10px 12px; border-radius: 0 8px 8px 0; font-size: 0.93rem; }
+.link b { color: var(--plum); }
+
+/* Sign-in chain */
+.chain { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: step; }
+.chain li { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: 4px 14px; align-items: baseline; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; position: relative; }
+.chain li + li::before { content: "↓"; position: absolute; top: -14px; left: 2rem; color: var(--muted); font-size: 0.8rem; }
+.chain b { font-family: var(--display); color: var(--green); }
+.chain span { font-size: 0.93rem; min-width: 0; }
+@media (max-width: 520px) { .chain li { grid-template-columns: 1fr; } }
+
+/* Flows */
+.flows { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.flow { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.flow ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 0.93rem; }
+
+/* Data table */
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 0.92rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 0.75rem/1.2 var(--mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+td code { white-space: nowrap; }
+section { display: grid; gap: 16px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Worker Tracker · branch claude/lucid-pasteur-m25bfh</span>
+    <h1>How Worker Tracker is built, phase by phase</h1>
+    <p class="muted">An offline-first farm notebook for workers, daily work, advances and wage payments. Each phase below builds on the one before it. The purple boxes show exactly where one phase plugs into the next.</p>
+  </header>
+
+  <div class="stack" aria-label="Technology stack">
+    <div><b>Frontend</b><span>React 19 + TypeScript, Vite 8, hash routing</span></div>
+    <div><b>On the phone</b><span>localStorage per user, service worker for offline</span></div>
+    <div><b>Backend</b><span>Supabase: Auth + Postgres table <code>tracker_items</code> with RLS</span></div>
+    <div><b>Hosting</b><span>Netlify static site <code>worker-tracker-farm</code></span></div>
+  </div>
+
+  <section>
+    <h2>The whole system at a glance</h2>
+    <div class="panel">
+      <div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph PHONE["Phone browser (frontend)"]
+    direction TB
+    UI["Pages<br/>Dashboard · Workers · Worker profile · History · Login"]
+    COMP["Components + hooks<br/>forms, lists, Insights, ExportButtons, AccountCard"]
+    DOM["Domain logic<br/>calculations · insights · exportData · validation"]
+    SVC["Services<br/>worker · work · transaction · export · sync"]
+    STORE["storageService<br/>per-user scope + change events"]
+    LS[("localStorage<br/>one area per signed-in user")]
+    SW["Service worker<br/>caches the app for offline"]
+    UI --> COMP --> DOM --> SVC --> STORE --> LS
+  end
+  subgraph CLOUD["Supabase (backend)"]
+    AUTH["Auth<br/>phone number + SMS code"]
+    DB[("Postgres<br/>tracker_items + RLS")]
+  end
+  NET["Netlify<br/>static hosting"]
+  NET -- "serves HTML/JS once" --> SW
+  UI -- "send code · verify code" --> AUTH
+  SVC -- "push changes · pull updates" --> DB
+  AUTH -. "JWT identifies user for RLS" .-> DB
+</pre>
+      </div>
+      <div class="legend">
+        <span>The phone is always the source the app reads from. Supabase is the shared copy that keeps phones in step.</span>
+      </div>
+    </div>
+  </section>
+
+
+  <section>
+    <h2>The sign-in chain</h2>
+    <p class="muted">How a phone number ends up deciding which rows a person can see. Each step hands one thing to the next.</p>
+    <ol class="chain">
+      <li><b>Phone</b><span>Farmer picks the country code and types the mobile number. <code>toE164()</code> turns it into <code>+919876543210</code>.</span></li>
+      <li><b>OTP</b><span><code>signInWithOtp({ phone })</code> asks Supabase to send an SMS code; <code>verifyOtp({ phone, token, type: 'sms' })</code> checks it. Resend waits 60 s.</span></li>
+      <li><b>Supabase Auth</b><span>Creates the account on the first verified sign-in and returns a session. The login token (JWT) carries the user id as <code>sub</code>. The session is saved on the phone, so the app opens offline.</span></li>
+      <li><b>user_id</b><span><code>AuthProvider</code> reads <code>session.user.id</code>. The same number always maps to the same id, on every phone.</span></li>
+      <li><b>localStorage</b><span><code>storageService.setScope("u:&lt;user_id&gt;:")</code>: each person on a shared phone has a separate area.</span></li>
+      <li><b>sync</b><span><code>syncService</code> uploads new, edited and deleted records under that <code>user_id</code> and downloads changes from other phones.</span></li>
+      <li><b>tracker_items</b><span>One row per worker, work day or payment: <code>user_id, collection, id, data, deleted, updated_at</code>.</span></li>
+      <li><b>RLS</b><span>Four policies allow SELECT, INSERT, UPDATE and DELETE only where <code>user_id = auth.uid()</code>, the id inside the login token. Tested on the real database by <code>tests/rls/tracker_items_rls.sql</code>.</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Phases</h2>
+    <div class="phases">
+
+      <article class="phase">
+        <div class="dot">1</div>
+        <div class="card">
+          <div class="card-head"><h3>Offline notebook on one phone</h3><span class="pill done">Built</span></div>
+          <p>The original app. Everything is saved on the phone and works without internet. Money is stored as whole paise, and each work record keeps the wage it was saved with so later wage changes never rewrite history.</p>
+          <div class="cols">
+            <div class="col"><h4>Frontend</h4>
+              <ul class="files">
+                <li><code>app/routes.tsx</code><span class="muted">Hash routes like #/workers/&lt;id&gt;, so any static host works</span></li>
+                <li><code>pages/*</code><span class="muted">Dashboard, Workers, Worker profile, History</span></li>
+                <li><code>hooks/useAppData.ts</code><span class="muted">Loads workers, work and money together</span></li>
+              </ul>
+            </div>
+            <div class="col"><h4>Logic and storage</h4>
+              <ul class="files">
+                <li><code>domain/calculations.ts</code><span class="muted">Balance = earned − (advances + wages paid)</span></li>
+                <li><code>services/*Service.ts</code><span class="muted">Validate, create, update, delete</span></li>
+                <li><code>services/storageService.ts</code><span class="muted">The only file that touches browser storage</span></li>
+                <li><code>public/sw.js</code><span class="muted">Caches the app shell for offline use</span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="link"><b>Connects to phase 2 and 3:</b> the dashboard and exports reuse the same loaded data (<code>useAppData</code>) and the same balance maths (<code>summarizeWorker</code>), so numbers always agree across screens, Excel and PDF.</div>
+        </div>
+      </article>
+
+      <article class="phase">
+        <div class="dot">2</div>
+        <div class="card">
+          <div class="card-head"><h3>Dashboard insights</h3><span class="pill done">Built</span></div>
+          <p>Below today's totals the dashboard shows the last 6 months of earnings against wages paid, and the workers you owe the most.</p>
+          <div class="cols">
+            <div class="col"><h4>Frontend</h4>
+              <ul class="files">
+                <li><code>components/dashboard/Insights.tsx</code><span class="muted">Bar chart, month table, "Most pending to pay" list</span></li>
+                <li><code>pages/DashboardPage.tsx</code><span class="muted">Adds Insights, export buttons and account card</span></li>
+              </ul>
+            </div>
+            <div class="col"><h4>Logic</h4>
+              <ul class="files">
+                <li><code>domain/insights.ts</code><span class="muted"><code>monthlySeries()</code> and <code>topOwed()</code>, pure functions with tests</span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="link"><b>Connects to phase 1:</b> reads only through <code>useAppData</code>, so it shows whatever the signed-in user's storage holds (phase 4) and refreshes when sync brings new data (phase 5).</div>
+        </div>
+      </article>
+
+      <article class="phase">
+        <div class="dot">3</div>
+        <div class="card">
+          <div class="card-head"><h3>Export to Excel and PDF</h3><span class="pill done">Built</span></div>
+          <p>One Excel workbook (Workers, Work and Money sheets), one summary PDF of every account, and a statement PDF per worker with a running balance. The file builders load only when a button is tapped, so the app still opens fast.</p>
+          <div class="cols">
+            <div class="col"><h4>Frontend</h4>
+              <ul class="files">
+                <li><code>components/export/ExportButtons.tsx</code><span class="muted">Export Excel, Export PDF, Statement (PDF)</span></li>
+                <li><code>services/exportService.ts</code><span class="muted">Lazy-loads <code>write-excel-file</code> and <code>jspdf</code>, then downloads</span></li>
+              </ul>
+            </div>
+            <div class="col"><h4>Logic</h4>
+              <ul class="files">
+                <li><code>domain/exportData.ts</code><span class="muted">Turns records into rows in rupees, sorted by date</span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="link"><b>Connects to phase 1:</b> uses <code>summarizeWorker</code> for balances. <b>Runs fully on the phone:</b> no server call, so exports work offline once the app has been opened online once.</div>
+        </div>
+      </article>
+
+      <article class="phase">
+        <div class="dot">4</div>
+        <div class="card">
+          <div class="card-head"><h3>Phone OTP login and per-user data</h3><span class="pill done">Built</span></div>
+          <p>People sign in with their mobile number and a code sent by SMS through Supabase Auth. The first verified sign-in creates the account. After sign-in, storage switches to that user's own area on the phone, so two people sharing a phone never see each other's data. Data saved before accounts existed moves to the first person who signs in.</p>
+          <div class="cols">
+            <div class="col"><h4>Frontend</h4>
+              <ul class="files">
+                <li><code>auth/LoginPage.tsx</code><span class="muted">Country code and mobile number, then the SMS code; Resend after 60 s, Change number, clear errors for wrong or expired codes, rate limits and no internet</span></li>
+                <li><code>auth/phone.ts</code><span class="muted">Number clean-up to +91… form, 6 to 10 digit code check, error messages</span></li>
+                <li><code>auth/AuthProvider.tsx</code><span class="muted">Shows login until signed in, then scopes storage and starts sync</span></li>
+                <li><code>components/account/AccountCard.tsx</code><span class="muted">Signed-in phone number, sync status, Sign out</span></li>
+              </ul>
+            </div>
+            <div class="col"><h4>Backend</h4>
+              <ul class="files">
+                <li>Supabase Auth, Phone provider<span class="muted">Sends the SMS code through the configured SMS provider and issues the login token (JWT); the session is saved on the phone, so it works offline</span></li>
+                <li><code>services/supabaseClient.ts</code><span class="muted">No keys means local-only mode with no login</span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="link"><b>Connects to phase 1:</b> <code>storageService.setScope("u:&lt;userId&gt;:")</code> changes the storage keys only. Pages and services did not change. <b>Connects to phase 5:</b> the user id from the login is what sync uploads under and what the database rules check.</div>
+        </div>
+      </article>
+
+      <article class="phase">
+        <div class="dot">5</div>
+        <div class="card">
+          <div class="card-head"><h3>Cloud sync backend</h3><span class="pill done">Built</span></div>
+          <p>Every save goes to the phone first, then uploads in the background. Other phones download changes when they open the app, come back online, or after a save. If two phones edit the same record, the later edit wins.</p>
+          <div class="cols">
+            <div class="col"><h4>Frontend (sync engine)</h4>
+              <ul class="files">
+                <li><code>services/syncService.ts</code><span class="muted"><b>Push:</b> compares records with what was last uploaded and sends only new, edited or deleted ones</span></li>
+                <li><span class="muted"><b>Pull:</b> fetches rows changed since the last pull, 1,000 at a time, and merges by <code>updatedAt</code></span></li>
+                <li><span class="muted"><b>Triggers:</b> 0.8 s after a save, when back online, when the app becomes visible</span></li>
+              </ul>
+            </div>
+            <div class="col"><h4>Backend (Supabase Postgres)</h4>
+              <ul class="files">
+                <li><code>tracker_items</code><span class="muted">One row per worker, work record or payment: <code>user_id, collection, id, data, deleted, updated_at</code></span></li>
+                <li>Row-level security<span class="muted">4 rules: a user can only read, add, edit or delete their own rows</span></li>
+                <li>Trigger <code>tracker_items_touch</code><span class="muted">The server sets <code>updated_at</code>, so a phone with a wrong clock can't hide changes</span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="link"><b>Connects to phase 4:</b> listens to <code>storageService.onWrite</code>, and writes downloaded data with <code>{ silent: true }</code> so it isn't uploaded again. <b>Connects to phase 2:</b> when a pull changes data, <code>AuthProvider</code> remounts the screens so the dashboard shows it.</div>
+        </div>
+      </article>
+
+      <article class="phase pending">
+        <div class="dot">6</div>
+        <div class="card">
+          <div class="card-head"><h3>Deploy and live test</h3><span class="pill blocked">Waiting</span></div>
+          <p>The build points at Supabase project <code>gzvsjkbpuguttmsodoiy</code> through <code>.env.production</code>. The live site still runs the old version: the cloud environment used for development cannot reach Netlify or the Supabase API.</p>
+          <div class="cols">
+            <div class="col"><h4>Still to do</h4>
+              <ul class="files">
+                <li>Deploy <code>dist/</code> to Netlify site <code>worker-tracker-farm</code></li>
+                <li>Enable the Phone provider in Supabase with an SMS provider, or test numbers</li>
+                <li>Run <code>tests/e2e/live.e2e.ts</code> against the production URL</li>
+              </ul>
+            </div>
+            <div class="col"><h4>Already verified</h4>
+              <ul class="files">
+                <li>Unit tests, lint and build pass</li>
+                <li>E2E tests (fake Supabase): OTP, resend, two users, two phones, offline, logout</li>
+                <li>RLS on the real database: 14 SELECT / INSERT / UPDATE / DELETE checks</li>
+                <li>Supabase security advisor reports no issues</li>
+              </ul>
+            </div>
+          </div>
+          <div class="link"><b>Connects to every phase:</b> Netlify serves the built app once; after that the service worker (phase 1) runs it offline and Supabase (phases 4 and 5) handles accounts and sync.</div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>How data moves</h2>
+    <div class="flows">
+      <div class="flow">
+        <h3>Saving a work day</h3>
+        <ol>
+          <li><code>WorkEntryForm</code> calls <code>workService.create()</code></li>
+          <li>Validation and wage calculation in <code>domain/</code></li>
+          <li><code>storageService.write()</code> saves to the user's area in localStorage</li>
+          <li>The write event schedules a sync 0.8 s later</li>
+          <li><code>syncService</code> upserts the new row into <code>tracker_items</code></li>
+        </ol>
+      </div>
+      <div class="flow">
+        <h3>Opening on a second phone</h3>
+        <ol>
+          <li><code>AuthProvider</code> restores the saved login</li>
+          <li>Storage switches to that user's area</li>
+          <li>Pull asks for rows newer than the last pull</li>
+          <li><code>mergeRows()</code> keeps the newer edit and applies deletions</li>
+          <li>Screens remount and show the merged data</li>
+        </ol>
+      </div>
+      <div class="flow">
+        <h3>Exporting</h3>
+        <ol>
+          <li>Tap Export Excel or Export PDF</li>
+          <li><code>buildExportTables()</code> or <code>buildStatement()</code> prepares rows</li>
+          <li>The Excel or PDF library loads on first use</li>
+          <li>The file downloads straight on the phone</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sign-in and sync sequence</h2>
+    <div class="panel">
+      <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant U as Farmer
+  participant A as App (phone)
+  participant L as localStorage
+  participant S as Supabase Auth
+  participant D as tracker_items (RLS)
+  U->>A: Country code + mobile number
+  A->>S: signInWithOtp(phone)
+  S-->>U: SMS with code
+  U->>A: Code
+  A->>S: verifyOtp(phone, code, sms)
+  S-->>A: Session (JWT, sub = user id)
+  A->>L: setScope("u:userId:"), move old data once
+  A->>D: Push records not yet uploaded
+  A->>D: Pull rows changed since last pull
+  D-->>A: Only this user's rows (RLS)
+  A->>L: Save merged data silently
+  U->>A: Records work offline
+  A->>L: Save
+  Note over A,D: Back online, the next sync uploads it
+</pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where each record lives</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Record</th><th>On the phone</th><th>In Supabase</th><th>Key fields</th></tr></thead>
+        <tbody>
+          <tr><td>Worker</td><td><code>…:u:&lt;id&gt;:workers</code></td><td><code>collection = 'workers'</code></td><td>name, phone, workType, dailyWage (paise)</td></tr>
+          <tr><td>Work day</td><td><code>…:u:&lt;id&gt;:workRecords</code></td><td><code>collection = 'workRecords'</code></td><td>date, status, earnedAmount, dailyWage at save time</td></tr>
+          <tr><td>Advance or wage payment</td><td><code>…:u:&lt;id&gt;:transactions</code></td><td><code>collection = 'transactions'</code></td><td>date, type, amount (paise), note</td></tr>
+          <tr><td>Sync bookkeeping</td><td><code>…:setting:sync:&lt;id&gt;:*</code></td><td>not stored</td><td>what was last uploaded, last pull time</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

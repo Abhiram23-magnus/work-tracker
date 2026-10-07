@@ -2,21 +2,25 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles/globals.css'
 import App from './app/App'
-import { checkStorage, settingsService } from './services'
+import { settingsService } from './services'
 import { ThemeProvider } from './components/theme/ThemeProvider'
 import { applyTheme, systemTheme } from './components/theme/theme'
+import { AuthProvider } from './auth/AuthProvider'
+import { LoginPage } from './auth/LoginPage'
 import { ErrorBoundary } from './components/layout/ErrorBoundary'
 
 // Apply the saved theme before the first paint so the screen doesn't flash the wrong colours,
 // and read the data once so any damaged records are reported on the first screen.
-const [savedTheme] = await Promise.all([settingsService.getTheme(), checkStorage()])
+const savedTheme = await settingsService.getTheme()
 applyTheme(savedTheme ?? systemTheme())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <ThemeProvider initial={savedTheme}>
-        <App />
+        <AuthProvider login={<LoginPage />}>
+          <App />
+        </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
   </StrictMode>,

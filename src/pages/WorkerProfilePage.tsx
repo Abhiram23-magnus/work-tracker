@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ExportButtons } from '../components/export/ExportButtons'
 import { workerService } from '../services'
 import { hrefFor, navigate } from '../app/routes'
 import { formatPaise } from '../utils/currency'
@@ -47,6 +48,7 @@ export function WorkerProfilePage({ id }: { id: string }) {
       <h1>{worker.name}</h1>
       {error && <Notice>{error}</Notice>}
       <WorkerSummary name={worker.name} summary={summarizeWorker(records, transactions)} />
+      <ExportButtons workers={[worker]} work={records} transactions={transactions} worker={worker} />
 
       {editing ? (
         <WorkerForm
