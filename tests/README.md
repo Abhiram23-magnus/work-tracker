@@ -44,3 +44,17 @@ Supabase allows one code per number per 60 seconds, so wait a minute between run
 Paste `tests/rls/tracker_items_rls.sql` into the Supabase SQL editor and run it. It creates two users, acts as
 each one through the `authenticated` role, prints a PASS line per check, raises an error on the first failure,
 and rolls everything back.
+
+## CI: GitHub Actions → Netlify
+
+`.github/workflows/netlify.yml` runs on every push to `claude/lucid-pasteur-m25bfh` or `main` (or manually from the
+Actions tab). GitHub's servers run the unit and E2E tests, deploy the tested `dist/` to the `worker-tracker-farm`
+Netlify site, then run the E2E suite against https://worker-tracker-farm.netlify.app/ and report whether the
+Supabase Phone provider is switched on.
+
+Repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Needed for |
+|---|---|
+| `NETLIFY_AUTH_TOKEN` | Deploying (Netlify → User settings → Applications → Personal access tokens). Without it the deploy and production jobs are skipped. |
+| `LIVE_PHONE_A`, `LIVE_CODE_A`, `LIVE_PHONE_B`, `LIVE_CODE_B` | The live OTP + RLS test against the real Supabase project (Supabase test phone numbers). Without them that one test is skipped. |
