@@ -27,7 +27,12 @@ export function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
         if (error) setError(error.message)
       } else {
-        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password })
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          // Bring the confirmation link back to this app, wherever it is hosted.
+          options: { emailRedirectTo: window.location.origin + window.location.pathname },
+        })
         if (error) setError(error.message)
         else if (!data.session) setInfo('Account created. Check your email to confirm it, then sign in.')
       }

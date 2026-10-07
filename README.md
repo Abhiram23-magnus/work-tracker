@@ -28,8 +28,9 @@ With keys, everyone signs in with email and password and their data stays privat
 
 1. Create a Supabase project and run `supabase/migrations/0001_tracker_items.sql` in its SQL editor.
    It creates one table, `tracker_items`, with row-level security so a user can only read and write their own rows.
-2. Copy `.env.example` to `.env.local` and fill in the project URL and publishable key
-   (on Netlify, set the same two variables under Site settings → Environment variables).
+2. The project `worker-tracker` (ap-south-1) is already set up and its public keys are in `.env.production`,
+   so production builds (including Netlify) use it. For `npm run dev`, copy them to `.env.local`.
+   To use another project, change those two values.
 3. Rebuild. The first person to sign in on a phone that already has data gets that data moved into their account.
 
 The phone keeps working offline. Changes save locally first and upload when the connection returns;
