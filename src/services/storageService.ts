@@ -17,7 +17,14 @@ export type CollectionName = 'workers' | 'workRecords' | 'transactions'
 export interface StorageService {
   /** Reads a collection. Malformed data never throws: bad JSON gives [], invalid items are skipped. */
   read<T>(collection: CollectionName, isValid: (item: unknown) => item is T): Promise<T[]>
-  write<T>(collection: CollectionName, items: T[]): Promise<void>
+  /** `silent` skips change listeners; the sync layer uses it when it writes data it just downloaded. */
+  write<T>(collection: CollectionName, items: T[], options?: { silent?: boolean }): Promise<void>
+  /** Keeps each signed-in user's data separate on a shared phone. '' is the original single-user area. */
+  setScope(scope: string): void
+  /** Called after every successful (non-silent) write; returns an unsubscribe function. */
+  onWrite(listener: (collection: CollectionName) => void): () => void
+  /** Moves data saved before accounts existed into the current scope, once, if the scope is empty. */
+  adoptUnscopedData(): void
   /** Collections that had to be repaired on read; the original text is kept under `<key>.corrupt`. */
   recoveredCollections(): CollectionName[]
   /** False when the browser blocks storage and data only lives until the page is closed. */
@@ -58,13 +65,18 @@ export function defaultBackend(): StorageBackend {
   }
 }
 
+const COLLECTIONS: CollectionName[] = ['workers', 'workRecords', 'transactions']
+
 export function createStorageService(backend: StorageBackend = defaultBackend()): StorageService {
   const recovered = new Set<CollectionName>()
+  const listeners = new Set<(collection: CollectionName) => void>()
+  let scope = ''
+  const keyFor = (collection: CollectionName) => `${KEY_PREFIX}${scope}${collection}`
 
   const quarantine = (collection: CollectionName, raw: string) => {
     recovered.add(collection)
     try {
-      backend.setItem(`${KEY_PREFIX}${collection}.corrupt`, raw)
+      backend.setItem(`${keyFor(collection)}.corrupt`, raw)
     } catch {
       // Best effort: losing the backup must not stop the app from opening.
     }
@@ -76,7 +88,7 @@ export function createStorageService(backend: StorageBackend = defaultBackend())
     async read<T>(collection: CollectionName, isValid: (item: unknown) => item is T) {
       let raw: string | null
       try {
-        raw = backend.getItem(KEY_PREFIX + collection)
+        raw = backend.getItem(keyFor(collection))
       } catch {
         return []
       }
@@ -98,11 +110,38 @@ export function createStorageService(backend: StorageBackend = defaultBackend())
       return valid
     },
 
-    async write<T>(collection: CollectionName, items: T[]) {
+    async write<T>(collection: CollectionName, items: T[], options: { silent?: boolean } = {}) {
       try {
-        backend.setItem(KEY_PREFIX + collection, JSON.stringify(items))
+        backend.setItem(keyFor(collection), JSON.stringify(items))
       } catch (error) {
         throw new StorageWriteError(error)
+      }
+      if (!options.silent) listeners.forEach((listener) => listener(collection))
+    },
+
+    setScope(next: string) {
+      scope = next
+      recovered.clear()
+    },
+
+    onWrite(listener) {
+      listeners.add(listener)
+      return () => void listeners.delete(listener)
+    },
+
+    adoptUnscopedData() {
+      if (!scope) return
+      try {
+        const legacy = COLLECTIONS.map((c) => [c, backend.getItem(`${KEY_PREFIX}${c}`)] as const)
+        const hasOwn = COLLECTIONS.some((c) => backend.getItem(keyFor(c)) !== null)
+        if (hasOwn || legacy.every(([, raw]) => raw === null)) return
+        for (const [c, raw] of legacy) {
+          if (raw === null) continue
+          backend.setItem(keyFor(c), raw)
+          backend.removeItem(`${KEY_PREFIX}${c}`)
+        }
+      } catch {
+        // Best effort: if this fails the user simply starts with an empty account.
       }
     },
 
