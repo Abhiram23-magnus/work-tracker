@@ -123,7 +123,7 @@ flowchart TB
     DOM["Domain logic<br/>calculations · insights · exportData · validation"]
     SVC["Services<br/>worker · work · transaction · export · sync"]
     STORE["storageService<br/>per-user scope + change events"]
-    LS[("localStorage<br/>worker-tracker:v1:u:&lt;userId&gt;:*")]
+    LS[("localStorage<br/>one area per signed-in user")]
     SW["Service worker<br/>caches the app for offline"]
     UI --> COMP --> DOM --> SVC --> STORE --> LS
   end
