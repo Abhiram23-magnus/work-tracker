@@ -80,17 +80,17 @@ class MusicController {
 
   private schedule() {
     if (!this.ctx) return;
-    const bpm = this.mood === "emotional" ? 74 : 132;
+    const bpm = this.mood === "emotional" ? 74 : 150;
     const stepLen = 60 / bpm / 4;
     while (this.nextTime < this.ctx.currentTime + 0.15) {
       this.playStep(this.step, this.nextTime);
       this.nextTime += stepLen;
-      this.step = (this.step + 1) % 64;
+      this.step = (this.step + 1) % 128; // 8 bars
     }
   }
-  private tone(freq: number, t: number, dur: number, type: OscillatorType, gain: number) {
+  private tone(freq: number, t: number, dur: number, type: OscillatorType, gain: number, detune = 0) {
     const c = this.ctx!; const o = c.createOscillator(); const g = c.createGain();
-    o.type = type; o.frequency.setValueAtTime(freq, t);
+    o.type = type; o.frequency.setValueAtTime(freq, t); o.detune.value = detune;
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(this.master!); o.start(t); o.stop(t + dur + 0.05);
@@ -102,29 +102,50 @@ class MusicController {
     const s = c.createBufferSource(); s.buffer = buf; const g = c.createGain(); g.gain.value = gain;
     s.connect(g); g.connect(this.master!); s.start(t);
   }
+  private sweep(f0: number, f1: number, t: number, dur: number, type: OscillatorType, gain: number) {
+    const c = this.ctx!; const o = c.createOscillator(); const g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur + 0.02);
+    o.connect(g); g.connect(this.master!); o.start(t); o.stop(t + dur + 0.05);
+  }
   private playStep(s: number, t: number) {
-    const emo = this.mood === "emotional";
-    const bassRoots = [146.83, 146.83, 116.54, 130.81]; // D, D, Bb, C
+    if (this.mood === "emotional") return this.playEmotional(s, t);
+    const bar = Math.floor(s / 16); // 0..7
+    const st = s % 16;
+    const drop = bar === 7; // build-up bar before the loop restarts
+    const roots = [146.83, 146.83, 116.54, 130.81, 146.83, 146.83, 110, 130.81]; // D D Bb C D D A C
+    const root = roots[bar];
+    // thumping kick (four-on-floor, doubled in the build-up)
+    if (st % 4 === 0 || (drop && st % 2 === 0)) this.sweep(160, 38, t, 0.14, "sine", 0.9);
+    // dappu (tamate drum) pattern: tha-tha-dhin-ka
+    if ([2, 3, 6, 7, 10, 11, 14].includes(st)) this.sweep(300, 120, t, 0.07, "triangle", 0.4), this.noise(t, 0.04, 0.22);
+    if (st === 4 || st === 12) this.noise(t, 0.14, 0.4); // clap
+    if (st % 2 === 1) this.noise(t, 0.025, 0.1); // hat
+    // rolling bass
+    if (st % 2 === 0) this.tone(root / 2, t, 0.16, "sawtooth", 0.24);
+    // brass stabs (detuned saws: root, minor third, fifth)
+    if ([0, 3, 6, 10].includes(st) && !drop) [1, 1.189, 1.498].forEach((r, i) => this.tone(root * 2 * r, t, 0.2, "sawtooth", 0.08, i * 7 - 7));
+    // siren / shehnai-style lead in D harmonic minor
+    const scale = [293.66, 329.63, 349.23, 392, 440, 466.16, 554.37, 587.33];
+    const lead = [7, -1, 6, 7, -1, 5, 4, -1, 7, 7, 6, -1, 4, 5, 4, 2];
+    const idx = lead[st];
+    if (idx >= 0 && bar % 4 >= 2 && !drop) { this.tone(scale[idx], t, 0.18, "square", 0.07); this.tone(scale[idx] * 2.005, t, 0.18, "sawtooth", 0.03); }
+    // riser + snare roll through the final bar, drop on the downbeat of bar 0
+    if (drop && st === 0) this.sweep(200, 2400, t, (60 / 150) * 4, "sawtooth", 0.1);
+    if (drop && st >= 8) this.noise(t, 0.05, 0.1 + st * 0.02);
+    if (s === 0) { this.sweep(90, 30, t, 0.5, "sine", 1); this.noise(t, 0.3, 0.45); }
+    // hype shout beep on every 4th bar
+    if (st === 8 && bar % 4 === 3) { this.tone(880, t, 0.1, "square", 0.08); this.tone(1318.5, t + 0.12, 0.12, "square", 0.08); }
+  }
+  private playEmotional(s: number, t: number) {
+    const roots = [146.83, 146.83, 116.54, 130.81];
     const bar = Math.floor(s / 16) % 4;
-    const root = bassRoots[bar];
-    if (!emo) {
-      if (s % 4 === 0) { // kick
-        const c = this.ctx!; const o = c.createOscillator(); const g = c.createGain();
-        o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.12);
-        g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-        o.connect(g); g.connect(this.master!); o.start(t); o.stop(t + 0.2);
-      }
-      if (s % 8 === 4) this.noise(t, 0.12, 0.35); // clap
-      if (s % 2 === 1) this.noise(t, 0.03, 0.12); // hat
-      if (s % 2 === 0) this.tone(root / 2, t, 0.2, "sawtooth", 0.22);
-    } else if (s % 16 === 0) {
-      this.tone(root, t, 1.8, "sine", 0.3);
-      this.tone(root * 1.5, t, 1.8, "sine", 0.18);
-    }
-    const scale = [293.66, 349.23, 392, 440, 523.25, 587.33]; // D F G A C D
+    const root = roots[bar];
+    if (s % 16 === 0) { this.tone(root, t, 1.8, "sine", 0.3); this.tone(root * 1.5, t, 1.8, "sine", 0.18); }
+    const scale = [293.66, 349.23, 392, 440, 523.25, 587.33];
     const pattern = [0, -1, 2, -1, 3, 2, -1, 4, 3, -1, 2, 0, -1, 2, 1, -1];
     const idx = pattern[(s + bar * 3) % 16];
-    if (idx >= 0 && (!emo || s % 4 === 0)) this.tone(scale[idx], t, emo ? 0.9 : 0.16, emo ? "triangle" : "square", emo ? 0.14 : 0.09);
+    if (idx >= 0 && s % 4 === 0) this.tone(scale[idx], t, 0.9, "triangle", 0.14);
   }
 }
 

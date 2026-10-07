@@ -17,7 +17,7 @@ export default function MusicPlayer() {
         {music.muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
       </button>
       <input aria-label="Volume" data-testid="music-volume" type="range" min={0} max={1} step={0.05} value={music.muted ? 0 : music.volume} onChange={(e) => music.setVolume(Number(e.target.value))} className="hidden w-20 accent-[#ff2a3d] sm:block" />
-      <span className="hidden text-xs text-sepia/70 md:inline" data-testid="music-source">{music.source === "file" ? "friendship-song.mp3" : music.source === "synth" ? "built-in loop" : "tap play"}</span>
+      <span className="hidden text-xs text-sepia/70 md:inline" data-testid="music-source">{music.source === "file" ? "friendship-song.mp3" : music.source === "synth" ? "crazy mass beat 🥁" : "tap play"}</span>
     </div>
   );
 }
